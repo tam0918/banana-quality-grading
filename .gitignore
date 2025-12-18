@@ -18,15 +18,15 @@ Thumbs.db
 
 # --- Training artifacts / datasets (often huge) ---
 # Roboflow/Kaggle datasets
-/datasets/
+# /datasets/  # Allow datasets to be committed
+# /datasets_smoke/  # Allow datasets_smoke to be committed
 
 # Ultralytics/YOLO training runs
 /runs/
-/runs_banana/
 
 # Model weights
 # Default: ignore all heavy model artifacts everywhere...
-*.pt
+# *.pt  # Allow .pt files to be committed
 *.onnx
 *.engine
 

@@ -54,7 +54,12 @@ class BananaGrader:
         self.model_path = model_path
         self.detector_model_path = detector_model_path
         self.data_yaml_path = data_yaml_path
-        self.device = device
+        # Device handling
+        # - Ultralytics accepts: "cpu", "0", "0,1" ...
+        # - If not provided, we default to GPU (cuda:0) when available.
+        # - Optional override via env BANANA_DEVICE (e.g., "cpu" or "0")
+        env_device = ("" if device is not None else __import__("os").environ.get("BANANA_DEVICE", "")).strip()
+        self.device = self._pick_device(device if device is not None else (env_device or "auto"))
         self.conf = conf
         self.iou = iou
 
@@ -80,6 +85,26 @@ class BananaGrader:
                 self.class_id_to_category_key = auto
 
         self._load_models()
+
+    @staticmethod
+    def _pick_device(requested: Union[int, str, None]) -> Union[int, str, None]:
+        if requested is None:
+            return None
+        if isinstance(requested, int):
+            return requested
+        req = str(requested).strip()
+        if not req:
+            return None
+
+        if req.lower() != "auto":
+            return req
+
+        try:
+            import torch
+
+            return "0" if torch.cuda.is_available() else "cpu"
+        except Exception:
+            return "cpu"
 
     @staticmethod
     def _default_mapping() -> Dict[int, str]:

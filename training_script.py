@@ -180,6 +180,24 @@ def main() -> None:
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--device", default="auto", help="auto | cpu | 0 | 0,1 ...")
     parser.add_argument(
+        "--batch",
+        type=int,
+        default=-1,
+        help="Batch size. Use -1 for Ultralytics AutoBatch (recommended on GPU).",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=8,
+        help="Dataloader workers. Reduce if you hit dataloader issues.",
+    )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=100,
+        help="Early-stopping patience (epochs).",
+    )
+    parser.add_argument(
         "--smoke",
         action="store_true",
         help="Create a tiny synthetic dataset and train 1 epoch (pipeline test)",
@@ -226,6 +244,9 @@ def main() -> None:
         epochs=int(args.epochs),
         imgsz=int(args.imgsz),
         device=device,
+        batch=int(args.batch),
+        workers=int(args.workers),
+        patience=int(args.patience),
         project="runs_banana",
         name="yolov8n_banana",
     )

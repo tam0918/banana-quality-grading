@@ -145,8 +145,35 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--imgsz", type=int, default=416)
     parser.add_argument("--device", default="auto", help="auto | cpu | 0 | 0,1 ...")
+    parser.add_argument(
+        "--batch",
+        type=int,
+        default=-1,
+        help="Batch size. Use -1 for Ultralytics AutoBatch (recommended on GPU).",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help=(
+            "Dataloader workers. On Windows, use 0-2 if you hit RAM/DataLoader issues. "
+            "If omitted, the script chooses a safe default for your OS."
+        ),
+    )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=100,
+        help="Early-stopping patience (epochs).",
+    )
     parser.add_argument("--download-only", action="store_true", help="Only download+unzip dataset, skip training")
     args = parser.parse_args()
+
+    # Windows DataLoader uses multiprocessing with high per-worker overhead.
+    # Defaulting to many workers can easily exhaust system RAM and crash with
+    # `DefaultCPUAllocator: not enough memory`, even for small allocations.
+    if args.workers is None:
+        args.workers = 0 if os.name == "nt" else 8
 
     # Ensure dataset exists
     _maybe_kaggle_download()
@@ -189,14 +216,31 @@ def main() -> None:
 
     print(f"[INFO] Training classifier on {TARGET_DIR} with device={device}")
 
-    model.train(
-        data=str(TARGET_DIR),
-        epochs=int(args.epochs),
-        imgsz=int(args.imgsz),
-        device=device,
-        project="runs_banana",
-        name="yolov8n_banana_cls",
-    )
+    try:
+        model.train(
+            data=str(TARGET_DIR),
+            epochs=int(args.epochs),
+            imgsz=int(args.imgsz),
+            device=device,
+            batch=int(args.batch),
+            workers=int(args.workers),
+            patience=int(args.patience),
+            project="runs_banana",
+            name="yolov8n_banana_cls",
+        )
+    except RuntimeError as e:
+        msg = str(e)
+        if "DefaultCPUAllocator" in msg and "not enough memory" in msg:
+            raise RuntimeError(
+                "Training failed due to insufficient system RAM during DataLoader preprocessing.\n"
+                "Fix options (pick one):\n"
+                "  1) Reduce dataloader workers: --workers 0 (Windows-safe)\n"
+                "  2) Reduce image size: --imgsz 224 (typical for classification)\n"
+                "  3) Reduce batch size (if not using AutoBatch): --batch 16\n"
+                "Also check Windows Virtual Memory (pagefile) is enabled.\n"
+                f"Original error: {e}"
+            )
+        raise
 
     best = Path("runs_banana") / "yolov8n_banana_cls" / "weights" / "best.pt"
     print(f"\nOK. Best weights: {best}")

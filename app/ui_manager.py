@@ -18,6 +18,7 @@ from .video_thread import FramePacket, VideoThread
 class UIConfig:
     font_path: str
     model_path: str
+    detector_model_path: str = "yolov8n.pt"
     camera_index: int = 0
 
 
@@ -34,7 +35,11 @@ class UI_Manager:
         self._root.geometry("1200x720")
         self._root.minsize(1100, 650)
 
-        self._grader = BananaGrader(model_path=config.model_path, data_yaml_path="datasets/data.yaml")
+        self._grader = BananaGrader(
+            model_path=config.model_path,
+            detector_model_path=config.detector_model_path,
+            data_yaml_path="datasets/data.yaml",
+        )
         self._text = UnicodeTextRenderer(FontConfig(font_path=config.font_path, font_size=22))
 
         self._packet_lock = threading.Lock()

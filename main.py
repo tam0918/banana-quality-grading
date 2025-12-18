@@ -44,6 +44,25 @@ DEFAULT_MODEL_CANDIDATES = [
 
 
 # ================================
+# YOLOv8 detector weights
+# ================================
+# App uses a 2-stage pipeline:
+# - Detector finds banana bbox
+# - Classifier predicts ripeness on the crop
+#
+# Default detector is COCO pretrained (yolov8n.pt).
+# If you train your own banana detector, put it at:
+#   weights/detector.pt
+# or set env BANANA_DETECTOR_PATH.
+
+DEFAULT_DETECTOR_CANDIDATES = [
+    os.path.join("weights", "detector.pt"),
+    os.path.join("runs_banana", "yolov8n_banana", "weights", "best.pt"),
+    "yolov8n.pt",
+]
+
+
+# ================================
 # Auto-provisioning (tải tài nguyên tự động)
 # ================================
 # Bạn có thể upload best.pt + font lên GitHub Releases rồi dán link tải trực tiếp.
@@ -56,6 +75,7 @@ DEFAULT_MODEL_CANDIDATES = [
 
 MODEL_URL = os.environ.get("BANANA_MODEL_URL", "")  # TODO: dán link trực tiếp best.pt
 FONT_URL = os.environ.get("BANANA_FONT_URL", "")    # TODO: dán link trực tiếp font .ttf
+DETECTOR_URL = os.environ.get("BANANA_DETECTOR_URL", "")
 
 
 def pick_font_path() -> str:
@@ -74,16 +94,28 @@ def pick_model_path() -> str:
     return DEFAULT_MODEL_CANDIDATES[0]
 
 
+def pick_detector_path() -> str:
+    env_path = os.environ.get("BANANA_DETECTOR_PATH", "").strip()
+    if env_path:
+        return env_path
+    for p in DEFAULT_DETECTOR_CANDIDATES:
+        if os.path.exists(p):
+            return p
+    return DEFAULT_DETECTOR_CANDIDATES[-1]
+
+
 def main() -> None:
     # Download missing resources if URLs provided.
     rm = ResourceManager()
     rm.check_and_download(os.path.join("weights", "best.pt"), MODEL_URL, "YOLO weights (best.pt)")
     rm.check_and_download(os.path.join("assets", "fonts", "Roboto-Regular.ttf"), FONT_URL, "Vietnamese font (TTF)")
+    rm.check_and_download(os.path.join("weights", "detector.pt"), DETECTOR_URL, "YOLO detector weights (detector.pt)")
 
     ui = UI_Manager(
         UIConfig(
             font_path=pick_font_path(),
             model_path=pick_model_path(),
+            detector_model_path=pick_detector_path(),
             camera_index=0,
         )
     )

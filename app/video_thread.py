@@ -28,7 +28,7 @@ class VideoThread:
         on_frame: Optional[Callable[[FramePacket], None]] = None,
     ):
         self._source = source
-        self._grader = grader or BananaGrader()
+        self._grader = grader or BananaGrader(model_path="weights/best.pt", data_yaml_path="datasets/data.yaml")
         self._on_frame = on_frame
 
         self._stop = threading.Event()
