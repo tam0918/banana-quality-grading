@@ -90,7 +90,8 @@ def create_smoke_dataset(root: Path) -> Path:
     (root / "valid" / "images").mkdir(parents=True, exist_ok=True)
     (root / "valid" / "labels").mkdir(parents=True, exist_ok=True)
 
-    names: List[str] = ["fresh", "ripe", "overripe", "rotten"]
+    # Detector smoke dataset should be a single class: banana
+    names: List[str] = ["banana"]
     data_yaml = root / "data.yaml"
     data_yaml.write_text(
         "\n".join(
@@ -112,27 +113,20 @@ def create_smoke_dataset(root: Path) -> Path:
         img[:] = (20, 20, 20)
 
         # Draw a fake "banana" ellipse
-        cls_id = random.randint(0, 3)
+        cls_id = 0
         center = (random.randint(180, 460), random.randint(160, 320))
         axes = (random.randint(120, 170), random.randint(40, 70))
         angle = random.randint(-35, 35)
-        if cls_id == 0:
-            color = (0, 180, 0)  # green-ish
-        elif cls_id == 1:
-            color = (0, 220, 220)  # yellow-ish
-        elif cls_id == 2:
-            color = (0, 190, 220)  # darker yellow
-        else:
-            color = (20, 20, 20)  # rotten: blend to dark
+        # Any banana-like color; this is just a smoke test.
+        color = (0, 220, 220)  # yellow-ish
         cv2.ellipse(img, center, axes, angle, 0, 360, color, -1)
 
-        # Add some random spots for overripe/rotten
-        if cls_id in (2, 3):
-            for _ in range(35 if cls_id == 2 else 60):
-                x = random.randint(0, w - 1)
-                y = random.randint(0, h - 1)
-                r = random.randint(2, 8)
-                cv2.circle(img, (x, y), r, (0, 0, 0), -1)
+        # Add some random spots to make texture less trivial
+        for _ in range(40):
+            x = random.randint(0, w - 1)
+            y = random.randint(0, h - 1)
+            r = random.randint(2, 8)
+            cv2.circle(img, (x, y), r, (0, 0, 0), -1)
 
         img_path = root / split / "images" / f"smoke_{idx}.jpg"
         cv2.imwrite(str(img_path), img)

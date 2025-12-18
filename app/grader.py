@@ -6,6 +6,11 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 
 try:
+    import cv2
+except Exception:  # pragma: no cover
+    cv2 = None  # type: ignore
+
+try:
     import yaml
 except Exception:  # pragma: no cover
     yaml = None  # type: ignore
@@ -45,6 +50,8 @@ class BananaGrader:
         self,
         model_path: str,
         detector_model_path: str = "yolov8n.pt",
+        detector_backend: Optional[str] = None,
+        haar_cascade_path: Optional[str] = None,
         data_yaml_path: Optional[str] = None,
         device: Union[int, str, None] = None,
         conf: float = 0.25,
@@ -53,6 +60,13 @@ class BananaGrader:
         # model_path is the *classifier* weights (e.g., weights/best.pt)
         self.model_path = model_path
         self.detector_model_path = detector_model_path
+        env = __import__("os").environ
+        self.detector_backend = (detector_backend or env.get("BANANA_DETECTOR_BACKEND", "yolo")).strip().lower()
+        self.haar_cascade_path = (
+            haar_cascade_path
+            or env.get("BANANA_HAAR_PATH", "").strip()
+            or "haarbanana.xml"
+        )
         self.data_yaml_path = data_yaml_path
         # Device handling
         # - Ultralytics accepts: "cpu", "0", "0,1" ...
@@ -79,12 +93,29 @@ class BananaGrader:
         self._classifier = None
         self._load_error: Optional[str] = None
 
+        self._haar = None
+
         if self.data_yaml_path:
             auto = self._mapping_from_data_yaml(self.data_yaml_path)
             if auto:
                 self.class_id_to_category_key = auto
 
         self._load_models()
+
+    def _load_haar(self) -> Optional[object]:
+        if cv2 is None:
+            self._load_error = "Chưa cài OpenCV (opencv-python)."
+            return None
+        try:
+            cascade = cv2.CascadeClassifier(self.haar_cascade_path)
+            # OpenCV returns empty classifier if load failed
+            if cascade.empty():
+                self._load_error = f"Không load được Haar Cascade: {self.haar_cascade_path}"
+                return None
+            return cascade
+        except Exception as e:
+            self._load_error = f"Không load được Haar Cascade: {type(e).__name__}: {e}"
+            return None
 
     @staticmethod
     def _pick_device(requested: Union[int, str, None]) -> Union[int, str, None]:
@@ -179,11 +210,18 @@ class BananaGrader:
             self._load_error = "Chưa cài ultralytics. Hãy pip install ultralytics."
             return
         try:
-            self._detector = YOLO(self.detector_model_path)
+            # Detector can be YOLO or Haar Cascade.
+            if self.detector_backend == "haar":
+                self._detector = None
+                self._haar = self._load_haar()
+            else:
+                self._detector = YOLO(self.detector_model_path)
+                self._haar = None
             self._classifier = YOLO(self.model_path)
         except Exception as e:
             self._detector = None
             self._classifier = None
+            self._haar = None
             self._load_error = (
                 f"Không load được model. detector={self.detector_model_path}, classifier={self.model_path}. "
                 f"Lỗi: {type(e).__name__}: {e}"
@@ -198,10 +236,61 @@ class BananaGrader:
         for k, v in names.items():
             if str(v).strip().lower() == "banana":
                 return int(k)
+        # If user trains a custom single-class detector and the class name isn't "banana",
+        # accept it to avoid a hard failure.
+        try:
+            if len(names) == 1:
+                return int(next(iter(names.keys())))
+        except Exception:
+            pass
         return None
 
+    def _haar_detect_bbox(self, frame_bgr: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
+        if self._haar is None or cv2 is None:
+            return None
+        try:
+            gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        except Exception:
+            return None
+
+        try:
+            rects = self._haar.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(40, 40),
+                flags=getattr(cv2, "CASCADE_SCALE_IMAGE", 0),
+            )
+        except Exception:
+            return None
+
+        if rects is None or len(rects) == 0:
+            return None
+
+        # Pick the largest rectangle (most likely the banana)
+        best = None
+        best_area = -1
+        for (x, y, w, h) in rects:
+            area = int(w) * int(h)
+            if area > best_area:
+                best_area = area
+                best = (int(x), int(y), int(x + w), int(y + h))
+        return best
+
     def grade(self, frame_bgr: np.ndarray) -> GradeResult:
-        if self._detector is None or self._classifier is None:
+        if (self.detector_backend == "haar" and self._haar is None) or self._classifier is None:
+            msg = self._load_error or "Model chưa sẵn sàng."
+            return GradeResult(
+                category_key="none",
+                label_vi="Chưa có model YOLO (best.pt)",
+                label_en="Missing YOLO model (best.pt)",
+                status_vi=msg,
+                confidence=0.0,
+                bbox_xyxy=None,
+                debug={"error": 1.0},
+            )
+
+        if self.detector_backend != "haar" and self._detector is None:
             msg = self._load_error or "Model chưa sẵn sàng."
             return GradeResult(
                 category_key="none",
@@ -214,91 +303,107 @@ class BananaGrader:
             )
 
         # 1) Detect banana bbox
-        banana_id = self._find_banana_class_id()
-        if banana_id is None:
-            return GradeResult(
-                category_key="none",
-                label_vi="Detector không có class banana",
-                label_en="Detector missing banana class",
-                status_vi="Hãy dùng detector COCO (yolov8n.pt) hoặc model có class 'banana'",
-                confidence=0.0,
-                bbox_xyxy=None,
-                debug={"error": 1.0},
-            )
-
-        try:
-            det = self._detector.predict(
-                source=frame_bgr,
-                verbose=False,
-                conf=max(0.15, self.conf),
-                iou=self.iou,
-                device=self.device,
-            )
-        except Exception as e:
-            return GradeResult(
-                category_key="none",
-                label_vi="Lỗi detect",
-                label_en="Detection error",
-                status_vi=str(e),
-                confidence=0.0,
-                bbox_xyxy=None,
-                debug={"error": 1.0},
-            )
-
-        if not det:
-            return GradeResult(
-                category_key="none",
-                label_vi="Không phát hiện chuối",
-                label_en="No banana detected",
-                status_vi="—",
-                confidence=0.0,
-                bbox_xyxy=None,
-                debug={"detections": 0.0},
-            )
-
-        boxes = getattr(det[0], "boxes", None)
-        if boxes is None or len(boxes) == 0:
-            return GradeResult(
-                category_key="none",
-                label_vi="Không phát hiện chuối",
-                label_en="No banana detected",
-                status_vi="—",
-                confidence=0.0,
-                bbox_xyxy=None,
-                debug={"detections": 0.0},
-            )
-
-        best_box = None
         best_det_conf = -1.0
-        for b in boxes:
+        if self.detector_backend == "haar":
+            bbox = self._haar_detect_bbox(frame_bgr)
+            if bbox is None:
+                return GradeResult(
+                    category_key="none",
+                    label_vi="Không phát hiện chuối",
+                    label_en="No banana detected",
+                    status_vi="—",
+                    confidence=0.0,
+                    bbox_xyxy=None,
+                    debug={"detections": 0.0},
+                )
+            x1, y1, x2, y2 = bbox
+            best_det_conf = 1.0  # Haar Cascade doesn't provide a real confidence
+        else:
+            banana_id = self._find_banana_class_id()
+            if banana_id is None:
+                return GradeResult(
+                    category_key="none",
+                    label_vi="Detector không có class banana",
+                    label_en="Detector missing banana class",
+                    status_vi="Hãy dùng detector COCO (yolov8n.pt) hoặc model có class 'banana'",
+                    confidence=0.0,
+                    bbox_xyxy=None,
+                    debug={"error": 1.0},
+                )
+
             try:
-                cls_id = int(b.cls.item())
-                conf = float(b.conf.item())
+                det = self._detector.predict(
+                    source=frame_bgr,
+                    verbose=False,
+                    conf=max(0.15, self.conf),
+                    iou=self.iou,
+                    device=self.device,
+                )
+            except Exception as e:
+                return GradeResult(
+                    category_key="none",
+                    label_vi="Lỗi detect",
+                    label_en="Detection error",
+                    status_vi=str(e),
+                    confidence=0.0,
+                    bbox_xyxy=None,
+                    debug={"error": 1.0},
+                )
+
+            if not det:
+                return GradeResult(
+                    category_key="none",
+                    label_vi="Không phát hiện chuối",
+                    label_en="No banana detected",
+                    status_vi="—",
+                    confidence=0.0,
+                    bbox_xyxy=None,
+                    debug={"detections": 0.0},
+                )
+
+            boxes = getattr(det[0], "boxes", None)
+            if boxes is None or len(boxes) == 0:
+                return GradeResult(
+                    category_key="none",
+                    label_vi="Không phát hiện chuối",
+                    label_en="No banana detected",
+                    status_vi="—",
+                    confidence=0.0,
+                    bbox_xyxy=None,
+                    debug={"detections": 0.0},
+                )
+
+            best_box = None
+            best_det_conf = -1.0
+            for b in boxes:
+                try:
+                    cls_id = int(b.cls.item())
+                    conf = float(b.conf.item())
+                except Exception:
+                    cls_id = int(b.cls)
+                    conf = float(b.conf)
+                if cls_id != banana_id:
+                    continue
+                if conf > best_det_conf:
+                    best_det_conf = conf
+                    best_box = b
+
+            if best_box is None:
+                return GradeResult(
+                    category_key="none",
+                    label_vi="Không phát hiện chuối",
+                    label_en="No banana detected",
+                    status_vi="—",
+                    confidence=0.0,
+                    bbox_xyxy=None,
+                    debug={"detections": float(len(boxes))},
+                )
+
+            xyxy = best_box.xyxy
+            try:
+                x1, y1, x2, y2 = [int(v) for v in xyxy[0].tolist()]
             except Exception:
-                cls_id = int(b.cls)
-                conf = float(b.conf)
-            if cls_id != banana_id:
-                continue
-            if conf > best_det_conf:
-                best_det_conf = conf
-                best_box = b
-
-        if best_box is None:
-            return GradeResult(
-                category_key="none",
-                label_vi="Không phát hiện chuối",
-                label_en="No banana detected",
-                status_vi="—",
-                confidence=0.0,
-                bbox_xyxy=None,
-                debug={"detections": float(len(boxes))},
-            )
-
-        xyxy = best_box.xyxy
-        try:
-            x1, y1, x2, y2 = [int(v) for v in xyxy[0].tolist()]
-        except Exception:
-            x1, y1, x2, y2 = [int(v) for v in xyxy]
+                x1, y1, x2, y2 = [int(v) for v in xyxy]
 
         h, w = frame_bgr.shape[:2]
         x1, y1 = max(0, x1), max(0, y1)

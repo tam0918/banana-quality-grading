@@ -18,8 +18,8 @@ Thumbs.db
 
 # --- Training artifacts / datasets (often huge) ---
 # Roboflow/Kaggle datasets
-# /datasets/  # Allow datasets to be committed
-# /datasets_smoke/  # Allow datasets_smoke to be committed
+/datasets/
+/datasets_smoke/
 
 # Ultralytics/YOLO training runs
 /runs/

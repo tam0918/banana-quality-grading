@@ -42,6 +42,19 @@ Bạn có thể chạy theo 2 mức:
 - Mức 1 (nhanh nhất): train **classifier** (Kaggle), dùng detector mặc định `yolov8n.pt`.
 - Mức 2 (đúng “train cả 2”): train thêm **detector** riêng (bbox) và đưa vào `weights/detector.pt`.
 
+### Không có Roboflow thì làm detector sao cho rẻ?
+Bạn có 3 lựa chọn (từ dễ → khó):
+- **Dùng sẵn detector COCO**: cứ để `yolov8n.pt` như mặc định (0 chi phí, thường đủ demo).
+- **Tự label bbox bằng tool miễn phí** rồi train YOLO detection: dùng `labelImg` / `CVAT self-host` / `makesense.ai` (web miễn phí) để xuất YOLO format.
+- **Haar Cascade (classical CV)**: không cần train YOLO detector, nhưng độ ổn định thường kém khi nền/ánh sáng thay đổi.
+
+Haar Cascade backend (nếu bạn có `haarbanana.xml`):
+```powershell
+$env:BANANA_DETECTOR_BACKEND = "haar"
+$env:BANANA_HAAR_PATH = "haarbanana.xml"
+python main.py
+```
+
 Script train classifier từ Kaggle: `training_kaggle_classification.py`.
 
 ### Train detector (YOLO detection, có bbox)
@@ -89,3 +102,65 @@ App sẽ tự dò `weights/best.pt` trước; nếu không thấy sẽ hiện tr
 
 ## 4) Lưu ý
 - Hệ thống hiện dùng YOLOv8 object detection. Độ chính xác phụ thuộc dataset + chất lượng label + ánh sáng khi quay.
+
+## 5) Build Android (APK) có được không?
+Có, nhưng **không thể “đóng gói trực tiếp”** project hiện tại thành APK theo kiểu 1-click.
+
+Lý do:
+- UI đang dùng `customtkinter` (desktop only).
+- Inference đang dùng `ultralytics` (thường kéo theo PyTorch), rất khó/không thực tế để nhét vào Android runtime.
+
+### Hướng khuyến nghị (chạy on-device): Export sang TFLite + Android Studio
+1) Export model sang `.tflite`:
+```bash
+python export_android_models.py --classifier weights/best.pt --detector yolov8n.pt --imgsz 416
+```
+Kết quả nằm trong `exports_android/`.
+
+2) Tạo app Android (Kotlin) dùng:
+- CameraX để lấy frame camera
+- TensorFlow Lite để chạy:
+	- Detector (lọc bbox class `banana`)
+	- Classifier (chấm độ chín trên crop)
+- Vẽ bbox + text overlay lên preview
+
+Gợi ý thư viện phía Android:
+- `org.tensorflow:tensorflow-lite`
+- (tuỳ chọn) `org.tensorflow:tensorflow-lite-support`
+
+### Hướng nhanh nhưng cần mạng: Android client + Python server
+Nếu bạn muốn ra app nhanh để demo: Android chỉ gửi frame lên server (PC/cloud) chạy `ultralytics`, nhận kết quả về để overlay.
+
+Nếu bạn muốn mình làm tiếp phần Android:
+- Bạn muốn **chạy offline on-device (TFLite)** hay **chạy qua server**?
+- Bạn muốn giữ UI giống desktop (1 màn hình camera + panel) hay UI tối giản?
+
+## 6) Build thẳng sang .exe (Windows) có được không?
+Có. Bạn có thể đóng gói thành app Windows bằng **PyInstaller**.
+
+Lưu ý quan trọng:
+- Vì có `ultralytics/torch`, file build sẽ **rất nặng** và thời gian build lâu (đây là bình thường với PyTorch).
+- Khuyến nghị build kiểu **one-folder** (thư mục `dist/...`) để ổn định hơn. One-file vẫn làm được nhưng thường chậm mở và dễ bị antivirus “soi”.
+
+### Cách build nhanh
+1) (Khuyến nghị) dùng venv:
+```bash
+python -m venv .venv
+\.\.venv\Scripts\activate
+```
+
+2) Build:
+```powershell
+./build_exe.ps1
+```
+
+Output:
+- `dist/BananaQualityGrading/BananaQualityGrading.exe`
+
+### Nếu mở exe mà báo thiếu model/font
+App cần các file runtime sau (có thể để app tự tải nếu bạn set URL ENV trong `main.py`):
+- `weights/best.pt` (classifier)
+- `weights/detector.pt` hoặc `yolov8n.pt` (detector)
+- `assets/fonts/Roboto-Regular.ttf` (font tiếng Việt)
+
+PyInstaller spec đã cố gắng “nhặt” những thứ này nếu có trong repo: `banana_quality_grading.spec`.
