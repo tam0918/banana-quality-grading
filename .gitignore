@@ -25,10 +25,16 @@ Thumbs.db
 /runs_banana/
 
 # Model weights
-/weights/
+# Default: ignore all heavy model artifacts everywhere...
 *.pt
 *.onnx
 *.engine
+
+# ...but allow committing selected weights under /weights/ (careful!).
+# Recommended: only commit small demo weights (e.g., best.pt). For large weights, use Git LFS.
+/weights/**
+!/weights/
+!/weights/*.pt
 
 # --- Fonts (often large and may have licensing constraints) ---
 /assets/fonts/*.ttf
