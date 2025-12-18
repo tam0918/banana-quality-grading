@@ -27,6 +27,7 @@ Copy to:
   weights/best.pt   (app default)
 """
 
+import argparse
 import os
 import subprocess
 import shutil
@@ -51,10 +52,26 @@ def _maybe_kaggle_download() -> None:
         print(f"[OK] Found dataset folder: {TARGET_DIR}")
         return
 
+    # Reuse any existing zip in datasets/ (common when user downloaded manually)
+    if not ZIP_PATH.exists():
+        zips = sorted(ZIP_PATH.parent.glob("*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for z in zips:
+            # Prefer the expected dataset zip name if present
+            if "banana-ripeness-classification-dataset" in z.name:
+                shutil.move(str(z), str(ZIP_PATH))
+                break
+        if not ZIP_PATH.exists() and zips:
+            # Fallback: take newest zip
+            shutil.move(str(zips[0]), str(ZIP_PATH))
+
     if ZIP_PATH.exists() and ZIP_PATH.stat().st_size > 0:
         print(f"[OK] Found dataset zip: {ZIP_PATH}")
+        need_download = False
     else:
-        print("[INFO] Dataset not found locally. Trying Kaggle API download...")
+        need_download = True
+
+    if need_download:
+        print("[INFO] Dataset not found locally. Trying Kaggle download...")
         try:
             ZIP_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -124,6 +141,13 @@ def _maybe_kaggle_download() -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Train YOLOv8 classifier from Kaggle banana ripeness dataset")
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--imgsz", type=int, default=416)
+    parser.add_argument("--device", default="auto", help="auto | cpu | 0 | 0,1 ...")
+    parser.add_argument("--download-only", action="store_true", help="Only download+unzip dataset, skip training")
+    args = parser.parse_args()
+
     # Ensure dataset exists
     _maybe_kaggle_download()
 
@@ -148,22 +172,27 @@ def main() -> None:
             f"Dataset structure invalid under {TARGET_DIR}. Expected train/ and val/ folders."
         )
 
+    if args.download_only:
+        print("[OK] Download-only mode. Dataset is ready.")
+        return
+
     model = YOLO("yolov8n-cls.pt")
 
-    device = "cpu"
-    try:
-        import torch
+    device = str(args.device)
+    if device == "auto":
+        try:
+            import torch
 
-        device = "0" if torch.cuda.is_available() else "cpu"
-    except Exception:
-        device = "cpu"
+            device = "0" if torch.cuda.is_available() else "cpu"
+        except Exception:
+            device = "cpu"
 
     print(f"[INFO] Training classifier on {TARGET_DIR} with device={device}")
 
     model.train(
         data=str(TARGET_DIR),
-        epochs=50,
-        imgsz=416,
+        epochs=int(args.epochs),
+        imgsz=int(args.imgsz),
         device=device,
         project="runs_banana",
         name="yolov8n_banana_cls",
