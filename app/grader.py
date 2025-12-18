@@ -28,25 +28,31 @@ class GradeResult:
 
 
 class BananaGrader:
-    """YOLOv8-based banana grading (Object Detection).
+    """YOLOv8-based banana grading using a 2-stage pipeline.
 
-    The model returns:
-    - bbox [x1,y1,x2,y2]
-    - class id
-    - confidence
+    Why 2-stage?
+    - Many public datasets (incl. Kaggle) are *classification* (folder-per-class) and have no bbox.
+    - UI requires bbox overlay.
 
-    This class maps class ids to the 4 required actionable categories.
+    Pipeline:
+    1) Detector (COCO) finds banana bbox.
+    2) Classifier (trained on ripeness dataset) predicts ripeness class for the cropped banana.
+
+    This class then maps predicted class name -> the 4 required actionable categories.
     """
 
     def __init__(
         self,
         model_path: str,
+        detector_model_path: str = "yolov8n.pt",
         data_yaml_path: Optional[str] = None,
         device: Union[int, str, None] = None,
         conf: float = 0.25,
         iou: float = 0.45,
     ):
+        # model_path is the *classifier* weights (e.g., weights/best.pt)
         self.model_path = model_path
+        self.detector_model_path = detector_model_path
         self.data_yaml_path = data_yaml_path
         self.device = device
         self.conf = conf
@@ -64,7 +70,8 @@ class BananaGrader:
             "defective": ("Bị bệnh/Hỏng", "Defective", "Loại bỏ"),
         }
 
-        self._model = None
+        self._detector = None
+        self._classifier = None
         self._load_error: Optional[str] = None
 
         if self.data_yaml_path:
@@ -72,7 +79,7 @@ class BananaGrader:
             if auto:
                 self.class_id_to_category_key = auto
 
-        self._load_model()
+        self._load_models()
 
     @staticmethod
     def _default_mapping() -> Dict[int, str]:
@@ -142,21 +149,34 @@ class BananaGrader:
         # Only accept mapping if it covers at least 2 classes; otherwise keep default.
         return mapping if len(mapping) >= 2 else None
 
-    def _load_model(self) -> None:
+    def _load_models(self) -> None:
         if YOLO is None:
             self._load_error = "Chưa cài ultralytics. Hãy pip install ultralytics."
             return
         try:
-            self._model = YOLO(self.model_path)
+            self._detector = YOLO(self.detector_model_path)
+            self._classifier = YOLO(self.model_path)
         except Exception as e:
-            self._model = None
+            self._detector = None
+            self._classifier = None
             self._load_error = (
-                f"Không load được model weights: {self.model_path}. "
+                f"Không load được model. detector={self.detector_model_path}, classifier={self.model_path}. "
                 f"Lỗi: {type(e).__name__}: {e}"
             )
 
+    def _find_banana_class_id(self) -> Optional[int]:
+        if self._detector is None:
+            return None
+        names = getattr(self._detector, "names", None)
+        if not isinstance(names, dict):
+            return None
+        for k, v in names.items():
+            if str(v).strip().lower() == "banana":
+                return int(k)
+        return None
+
     def grade(self, frame_bgr: np.ndarray) -> GradeResult:
-        if self._model is None:
+        if self._detector is None or self._classifier is None:
             msg = self._load_error or "Model chưa sẵn sàng."
             return GradeResult(
                 category_key="none",
@@ -168,28 +188,39 @@ class BananaGrader:
                 debug={"error": 1.0},
             )
 
-        # Inference
-        # Ultralytics accepts BGR numpy arrays directly.
+        # 1) Detect banana bbox
+        banana_id = self._find_banana_class_id()
+        if banana_id is None:
+            return GradeResult(
+                category_key="none",
+                label_vi="Detector không có class banana",
+                label_en="Detector missing banana class",
+                status_vi="Hãy dùng detector COCO (yolov8n.pt) hoặc model có class 'banana'",
+                confidence=0.0,
+                bbox_xyxy=None,
+                debug={"error": 1.0},
+            )
+
         try:
-            results = self._model.predict(
+            det = self._detector.predict(
                 source=frame_bgr,
                 verbose=False,
-                conf=self.conf,
+                conf=max(0.15, self.conf),
                 iou=self.iou,
                 device=self.device,
             )
         except Exception as e:
             return GradeResult(
                 category_key="none",
-                label_vi="Lỗi inference",
-                label_en="Inference error",
+                label_vi="Lỗi detect",
+                label_en="Detection error",
                 status_vi=str(e),
                 confidence=0.0,
                 bbox_xyxy=None,
                 debug={"error": 1.0},
             )
 
-        if not results:
+        if not det:
             return GradeResult(
                 category_key="none",
                 label_vi="Không phát hiện chuối",
@@ -200,8 +231,7 @@ class BananaGrader:
                 debug={"detections": 0.0},
             )
 
-        r0 = results[0]
-        boxes = getattr(r0, "boxes", None)
+        boxes = getattr(det[0], "boxes", None)
         if boxes is None or len(boxes) == 0:
             return GradeResult(
                 category_key="none",
@@ -213,50 +243,114 @@ class BananaGrader:
                 debug={"detections": 0.0},
             )
 
-        best = None
-        best_conf = -1.0
-
-        # Each box has: xyxy, cls, conf
+        best_box = None
+        best_det_conf = -1.0
         for b in boxes:
             try:
                 cls_id = int(b.cls.item())
                 conf = float(b.conf.item())
             except Exception:
-                # Fallback for older ultralytics tensor shapes
                 cls_id = int(b.cls)
                 conf = float(b.conf)
-
-            if cls_id not in self.class_id_to_category_key:
+            if cls_id != banana_id:
                 continue
-            if conf > best_conf:
-                best_conf = conf
-                best = b
+            if conf > best_det_conf:
+                best_det_conf = conf
+                best_box = b
 
-        if best is None:
+        if best_box is None:
             return GradeResult(
                 category_key="none",
-                label_vi="Không đúng class dataset",
-                label_en="Unknown dataset classes",
-                status_vi="Hãy chỉnh mapping class_id_to_category_key",
+                label_vi="Không phát hiện chuối",
+                label_en="No banana detected",
+                status_vi="—",
                 confidence=0.0,
                 bbox_xyxy=None,
                 debug={"detections": float(len(boxes))},
             )
 
-        # Extract bbox
-        xyxy = best.xyxy
+        xyxy = best_box.xyxy
         try:
             x1, y1, x2, y2 = [int(v) for v in xyxy[0].tolist()]
         except Exception:
             x1, y1, x2, y2 = [int(v) for v in xyxy]
 
-        category_key = self.class_id_to_category_key[int(best.cls.item())]
+        h, w = frame_bgr.shape[:2]
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w - 1, x2), min(h - 1, y2)
+        if x2 <= x1 or y2 <= y1:
+            return GradeResult(
+                category_key="none",
+                label_vi="BBox không hợp lệ",
+                label_en="Invalid bbox",
+                status_vi="—",
+                confidence=0.0,
+                bbox_xyxy=None,
+                debug={"error": 1.0},
+            )
+
+        crop = frame_bgr[y1:y2, x1:x2]
+
+        # 2) Classify crop
+        try:
+            cls_res = self._classifier.predict(source=crop, verbose=False, device=self.device)
+        except Exception as e:
+            return GradeResult(
+                category_key="none",
+                label_vi="Lỗi classify",
+                label_en="Classification error",
+                status_vi=str(e),
+                confidence=0.0,
+                bbox_xyxy=(x1, y1, x2, y2),
+                debug={"det_conf": float(best_det_conf)},
+            )
+
+        if not cls_res:
+            return GradeResult(
+                category_key="none",
+                label_vi="Không phân loại được",
+                label_en="No classification result",
+                status_vi="—",
+                confidence=0.0,
+                bbox_xyxy=(x1, y1, x2, y2),
+                debug={"det_conf": float(best_det_conf)},
+            )
+
+        r0 = cls_res[0]
+        probs = getattr(r0, "probs", None)
+        if probs is None:
+            return GradeResult(
+                category_key="none",
+                label_vi="Không phân loại được",
+                label_en="No classification result",
+                status_vi="—",
+                confidence=0.0,
+                bbox_xyxy=(x1, y1, x2, y2),
+                debug={"det_conf": float(best_det_conf)},
+            )
+
+        try:
+            top1 = int(probs.top1)
+            top1_conf = float(probs.top1conf)
+        except Exception:
+            # Fallback
+            top1 = int(getattr(probs, "top1", 0))
+            top1_conf = float(getattr(probs, "top1conf", 0.0))
+
+        class_names = getattr(self._classifier, "names", {})
+        pred_name = str(class_names.get(top1, str(top1)))
+
+        # Map predicted class name -> category
+        inferred = self._infer_category_from_class_name(pred_name)
+        category_key = inferred or self.class_id_to_category_key.get(top1) or "export"
+
         label_vi, label_en, status_vi = self._category_info[category_key]
+        confidence = float(min(1.0, max(0.0, top1_conf)))
 
         debug = {
-            "detections": float(len(boxes)),
-            "best_conf": float(best_conf),
-            "class_id": float(int(best.cls.item())),
+            "det_conf": float(best_det_conf),
+            "cls_conf": float(confidence),
+            "cls_id": float(top1),
         }
 
         return GradeResult(
@@ -264,7 +358,7 @@ class BananaGrader:
             label_vi=label_vi,
             label_en=label_en,
             status_vi=status_vi,
-            confidence=float(best_conf),
+            confidence=confidence,
             bbox_xyxy=(x1, y1, x2, y2),
             debug=debug,
         )

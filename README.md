@@ -28,6 +28,13 @@ python main.py
 ## 3.1) (Tuỳ chọn nhưng khuyến nghị) Train YOLOv8
 Ứng dụng dùng YOLOv8 (ultralytics). Bạn cần file weights `best.pt` để inference.
 
+### Nếu bạn dùng dataset *Kaggle classification* (folder per class)
+Dataset Kaggle thường là **image classification** (không có bounding box). Project này xử lý bằng cách:
+- **YOLO detector (COCO)** tìm vị trí quả chuối (bbox) trên webcam.
+- **YOLO classifier** (train từ Kaggle) phân loại độ chín trên crop.
+
+Script train classifier từ Kaggle: `training_kaggle_classification.py`.
+
 1) Chuẩn bị dataset định dạng YOLOv8 (có `data.yaml`).
 2) Giải nén dataset vào thư mục `datasets/` sao cho có `datasets/data.yaml`.
 3) (Nếu cần) chỉnh đường dẫn dataset trong `training_script.py`.
@@ -35,6 +42,17 @@ python main.py
 ```bash
 python training_script.py
 ```
+
+### Train classifier từ Kaggle (auto-download)
+1) Cấu hình Kaggle API (bắt buộc để tải tự động):
+- Tạo `kaggle.json` và đặt tại: `%USERPROFILE%/.kaggle/kaggle.json`
+	hoặc set env: `KAGGLE_USERNAME`, `KAGGLE_KEY`.
+2) Chạy:
+```bash
+python training_kaggle_classification.py
+```
+3) Copy weights:
+- `runs_banana/yolov8n_banana_cls/weights/best.pt` -> `weights/best.pt`
 
 Sau khi train xong, weights thường nằm ở:
 - `runs_banana/yolov8n_banana/weights/best.pt`
