@@ -1,0 +1,38 @@
+# --- Python / Virtualenv ---
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+
+# --- Training artifacts / datasets (often huge) ---
+# Roboflow/Kaggle datasets
+/datasets/
+
+# Ultralytics/YOLO training runs
+/runs/
+/runs_banana/
+
+# Model weights
+/weights/
+*.pt
+*.onnx
+*.engine
+
+# --- Fonts (often large and may have licensing constraints) ---
+/assets/fonts/*.ttf
+/assets/fonts/*.otf
+
+# --- Logs ---
+*.log
