@@ -1,0 +1,38 @@
+{
+  "sample_image": "tests\\assets\\banana.jpg",
+  "classifier_weights": "yolov8n_banana_cls3_best.pt",
+  "detector_weights": "yolov8n.pt",
+  "category_key": "export",
+  "label_vi": "Chín Vừa/Xuất Khẩu",
+  "label_en": "Just Ripe / Export",
+  "confidence": 0.9653383493423462,
+  "bbox_xyxy": [
+    0,
+    0,
+    1175,
+    999
+  ],
+  "quality_score": 0.5209631772226364,
+  "spot_count": 54,
+  "refined": false,
+  "debug": {
+    "det_conf": 0.01,
+    "cls_conf": 0.9653383493423462,
+    "cls_id": 1.0,
+    "bbox_held": 1.0,
+    "quality_score": 0.5209631772226364,
+    "yellow_ratio": 0.9990779985688336,
+    "green_ratio": 0.0,
+    "brown_ratio": 0.006405845764297903,
+    "spot_count": 54.0,
+    "ensemble_conf": 0.9653383493423462
+  },
+  "color_features": {
+    "yellow_ratio": 0.9990779985688336,
+    "green_ratio": 0.0,
+    "brown_ratio": 0.006405845764297903,
+    "color_uniformity": 0.8162740959564995,
+    "solidity": 0.5827662659165896,
+    "texture_variance": 0.011284835473771643
+  }
+}

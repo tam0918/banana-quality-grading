@@ -30,6 +30,11 @@ Nếu không tìm thấy font, app sẽ **fallback sang English** và in cảnh 
 python main.py
 ```
 
+### Check nhanh thiếu gì (khuyến nghị khi quay lại project)
+```bash
+python check_setup.py
+```
+
 ## 3.1) (Tuỳ chọn nhưng khuyến nghị) Train YOLOv8
 Ứng dụng dùng YOLOv8 (ultralytics). Bạn cần file weights `best.pt` để inference.
 
@@ -87,6 +92,14 @@ Mặc định app sẽ tìm theo thứ tự:
 Bạn có thể override bằng env:
 - `BANANA_DEVICE=cpu` hoặc `BANANA_DEVICE=0`
 - `BANANA_DETECTOR_PATH=...` (trỏ tới detector .pt)
+
+### Tăng ổn định khi chưa có detector custom dataset
+Nếu bạn chưa có data bbox để train detector riêng, bạn vẫn có thể tăng ổn định (giảm nhấp nháy bbox) bằng cách giữ bbox gần nhất vài frame khi detector COCO miss tạm thời:
+
+```powershell
+$env:BANANA_BBOX_HOLD = "5"   # default=5, set 0 để tắt
+python main.py
+```
 
 Sau khi train xong, weights thường nằm ở:
 - `runs_banana/yolov8n_banana/weights/best.pt`

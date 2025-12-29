@@ -27,6 +27,7 @@ import argparse
 import random
 from pathlib import Path
 from typing import List
+import shutil
 
 from ultralytics import YOLO
 
@@ -196,6 +197,17 @@ def main() -> None:
         action="store_true",
         help="Create a tiny synthetic dataset and train 1 epoch (pipeline test)",
     )
+    parser.add_argument(
+        "--copy-to-weights",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Copy trained best.pt to weights/detector.pt for the app (default: true).",
+    )
+    parser.add_argument(
+        "--weights-out",
+        default=str(Path("weights") / "detector.pt"),
+        help="Destination path when --copy-to-weights is enabled. Default: weights/detector.pt",
+    )
     args = parser.parse_args()
 
     # ================================
@@ -245,9 +257,19 @@ def main() -> None:
         name="yolov8n_banana",
     )
 
-    # Sau khi train xong, weights thường nằm ở:
-    # runs_banana/yolov8n_banana/weights/best.pt
-    print("\nOK. Tìm best.pt tại: runs_banana/yolov8n_banana/weights/best.pt")
+    best = Path("runs_banana") / "yolov8n_banana" / "weights" / "best.pt"
+    print(f"\n[OK] Best weights: {best}")
+
+    if args.copy_to_weights:
+        dst = Path(args.weights_out)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(best, dst)
+            print(f"[OK] Copied -> {dst}")
+        except Exception as e:
+            print(f"[WARN] Không copy được detector best.pt sang {dst}: {type(e).__name__}: {e}")
+    else:
+        print("[INFO] --no-copy-to-weights: giữ weights trong runs_banana/.")
 
 
 if __name__ == "__main__":

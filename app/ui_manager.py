@@ -8,6 +8,7 @@ import customtkinter as ctk
 import cv2
 import numpy as np
 from PIL import Image
+import os
 
 from .grader import BananaGrader, GradeResult
 from .text_overlay import FontConfig, UnicodeTextRenderer
@@ -35,10 +36,11 @@ class UI_Manager:
         self._root.geometry("1200x720")
         self._root.minsize(1100, 650)
 
+        data_yaml_path = "datasets/data.yaml" if os.path.exists("datasets/data.yaml") else None
         self._grader = BananaGrader(
             model_path=config.model_path,
             detector_model_path=config.detector_model_path,
-            data_yaml_path="datasets/data.yaml",
+            data_yaml_path=data_yaml_path,
         )
         self._text = UnicodeTextRenderer(FontConfig(font_path=config.font_path, font_size=22))
 
@@ -78,7 +80,7 @@ class UI_Manager:
 
         self._right = ctk.CTkFrame(self._root, corner_radius=16)
         self._right.grid(row=0, column=1, sticky="nsew", padx=(0, 16), pady=16)
-        self._right.grid_rowconfigure(6, weight=1)
+        self._right.grid_rowconfigure(7, weight=1)
         self._right.grid_columnconfigure(0, weight=1)
 
         # Video canvas
@@ -125,9 +127,46 @@ class UI_Manager:
         )
         self._fps_label.grid(row=4, column=0, sticky="ew", padx=16, pady=6)
 
+        # Enhanced quality info section
+        quality_frame = ctk.CTkFrame(self._right, corner_radius=12, fg_color="#1a1a2e")
+        quality_frame.grid(row=5, column=0, sticky="ew", padx=16, pady=6)
+        quality_frame.grid_columnconfigure(0, weight=1)
+        
+        quality_title = ctk.CTkLabel(
+            quality_frame,
+            text="📊 Phân Tích Chất Lượng",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            anchor="w",
+        )
+        quality_title.grid(row=0, column=0, sticky="w", padx=12, pady=(8, 4))
+        
+        self._quality_score_label = ctk.CTkLabel(
+            quality_frame,
+            text="Điểm chất lượng: —",
+            font=ctk.CTkFont(size=13),
+            anchor="w",
+        )
+        self._quality_score_label.grid(row=1, column=0, sticky="ew", padx=12, pady=2)
+        
+        self._color_analysis_label = ctk.CTkLabel(
+            quality_frame,
+            text="Màu sắc: —",
+            font=ctk.CTkFont(size=13),
+            anchor="w",
+        )
+        self._color_analysis_label.grid(row=2, column=0, sticky="ew", padx=12, pady=2)
+        
+        self._spot_label = ctk.CTkLabel(
+            quality_frame,
+            text="Đốm/Khuyết điểm: —",
+            font=ctk.CTkFont(size=13),
+            anchor="w",
+        )
+        self._spot_label.grid(row=3, column=0, sticky="ew", padx=12, pady=(2, 8))
+
         # Controls
         controls = ctk.CTkFrame(self._right, corner_radius=14)
-        controls.grid(row=5, column=0, sticky="ew", padx=16, pady=(14, 16))
+        controls.grid(row=6, column=0, sticky="ew", padx=16, pady=(14, 16))
         controls.grid_columnconfigure(0, weight=1)
         controls.grid_columnconfigure(1, weight=1)
 
@@ -159,7 +198,7 @@ class UI_Manager:
             justify="left",
             anchor="w",
         )
-        hint.grid(row=6, column=0, sticky="sw", padx=16, pady=(0, 16))
+        hint.grid(row=7, column=0, sticky="sw", padx=16, pady=(0, 16))
 
     # ---------- Thread handoff ----------
 
@@ -190,10 +229,50 @@ class UI_Manager:
             self._status_label.configure(text="Trạng thái: —")
             self._grade_label.configure(text=f"Phân loại: {grade.label_vi}")
             self._confidence_label.configure(text="Độ tin cậy: —")
+            self._quality_score_label.configure(text="Điểm chất lượng: —")
+            self._color_analysis_label.configure(text="Màu sắc: —")
+            self._spot_label.configure(text="Đốm/Khuyết điểm: —")
         else:
             self._status_label.configure(text=f"Trạng thái: {grade.status_vi}")
             self._grade_label.configure(text=f"Phân loại: {grade.label_vi}")
-            self._confidence_label.configure(text=f"Độ tin cậy: {grade.confidence * 100:.0f}%")
+            
+            # Show enhanced confidence with refinement indicator
+            conf_text = f"Độ tin cậy: {grade.confidence * 100:.0f}%"
+            if grade.refined:
+                conf_text += " ✓ (refined)"
+            self._confidence_label.configure(text=conf_text)
+            
+            # Show quality score with color indicator
+            if grade.quality_score > 0:
+                quality_text = f"Điểm chất lượng: {grade.quality_score:.0%}"
+                if grade.quality_score >= 0.7:
+                    quality_text += " 🟢 Tốt"
+                elif grade.quality_score >= 0.4:
+                    quality_text += " 🟡 Trung bình"
+                else:
+                    quality_text += " 🔴 Kém"
+                self._quality_score_label.configure(text=quality_text)
+            else:
+                self._quality_score_label.configure(text="Điểm chất lượng: —")
+            
+            # Show color analysis
+            if grade.color_features:
+                yellow = grade.color_features.get("yellow_ratio", 0) * 100
+                green = grade.color_features.get("green_ratio", 0) * 100
+                brown = grade.color_features.get("brown_ratio", 0) * 100
+                color_text = f"Màu sắc: 🟡{yellow:.0f}% 🟢{green:.0f}% 🟤{brown:.0f}%"
+                self._color_analysis_label.configure(text=color_text)
+            else:
+                self._color_analysis_label.configure(text="Màu sắc: —")
+            
+            # Show spot count
+            if grade.spot_count > 0:
+                spot_text = f"Đốm/Khuyết điểm: {grade.spot_count} đốm"
+                if grade.spot_count > 10:
+                    spot_text += " ⚠️"
+                self._spot_label.configure(text=spot_text)
+            else:
+                self._spot_label.configure(text="Đốm/Khuyết điểm: Không có")
 
         self._fps_label.configure(text=f"FPS: {fps:.1f}")
 
@@ -234,6 +313,20 @@ class UI_Manager:
             color_bgr=color,
             bg_bgr=(0, 0, 0),
         )
+        
+        # Draw enhanced quality overlay (below bbox)
+        if grade.quality_score > 0 and grade.color_features:
+            quality_y = y2 + 10
+            h, w = out.shape[:2]
+            if quality_y + 60 < h:  # Make sure there's space
+                self._text.draw_quality_info(
+                    out,
+                    quality_score=grade.quality_score,
+                    spot_count=grade.spot_count,
+                    color_features=grade.color_features,
+                    xy=(x1, quality_y),
+                )
+        
         return out
 
     def _render_frame(self, frame_bgr: np.ndarray) -> None:

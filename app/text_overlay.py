@@ -111,3 +111,126 @@ class UnicodeTextRenderer:
         out_bgr = cv2.cvtColor(out_rgb, cv2.COLOR_RGB2BGR)
         frame_bgr[:, :, :] = out_bgr
         return frame_bgr
+
+    def draw_quality_info(
+        self,
+        frame_bgr: np.ndarray,
+        quality_score: float,
+        spot_count: int,
+        color_features: dict,
+        xy: Tuple[int, int],
+        font_scale: float = 0.5,
+    ) -> np.ndarray:
+        """Draw enhanced quality information overlay.
+        
+        Based on research paper: Display quality metrics for transparency.
+        """
+        x, y = self._clamp_xy(frame_bgr, int(xy[0]), int(xy[1]))
+        
+        # Quality bar visualization
+        bar_width = 150
+        bar_height = 12
+        bar_x = x
+        bar_y = y
+        
+        # Background bar
+        cv2.rectangle(
+            frame_bgr,
+            (bar_x, bar_y),
+            (bar_x + bar_width, bar_y + bar_height),
+            (50, 50, 50),
+            -1
+        )
+        
+        # Quality fill (color based on score)
+        fill_width = int(bar_width * quality_score)
+        if quality_score >= 0.7:
+            fill_color = (0, 200, 0)  # Green - good
+        elif quality_score >= 0.4:
+            fill_color = (0, 200, 200)  # Yellow - fair
+        else:
+            fill_color = (0, 0, 200)  # Red - poor
+        
+        cv2.rectangle(
+            frame_bgr,
+            (bar_x, bar_y),
+            (bar_x + fill_width, bar_y + bar_height),
+            fill_color,
+            -1
+        )
+        
+        # Quality text
+        quality_text = f"Quality: {quality_score:.0%}"
+        cv2.putText(
+            frame_bgr,
+            quality_text,
+            (bar_x + bar_width + 10, bar_y + bar_height - 2),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+        
+        # Color composition mini-bars
+        if color_features:
+            mini_y = bar_y + bar_height + 8
+            mini_width = 50
+            mini_height = 6
+            
+            colors_info = [
+                ("Y", color_features.get("yellow_ratio", 0), (0, 200, 200)),  # Yellow
+                ("G", color_features.get("green_ratio", 0), (0, 180, 0)),     # Green
+                ("B", color_features.get("brown_ratio", 0), (50, 100, 150)),  # Brown
+            ]
+            
+            for i, (label, ratio, color) in enumerate(colors_info):
+                cx = bar_x + i * (mini_width + 15)
+                
+                # Background
+                cv2.rectangle(
+                    frame_bgr,
+                    (cx, mini_y),
+                    (cx + mini_width, mini_y + mini_height),
+                    (30, 30, 30),
+                    -1
+                )
+                
+                # Fill
+                fill_w = int(mini_width * min(1.0, ratio))
+                cv2.rectangle(
+                    frame_bgr,
+                    (cx, mini_y),
+                    (cx + fill_w, mini_y + mini_height),
+                    color,
+                    -1
+                )
+                
+                # Label
+                cv2.putText(
+                    frame_bgr,
+                    f"{label}:{ratio:.0%}",
+                    (cx, mini_y + mini_height + 12),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.35,
+                    (200, 200, 200),
+                    1,
+                    cv2.LINE_AA,
+                )
+        
+        # Spot count indicator
+        if spot_count > 0:
+            spot_y = bar_y + bar_height + 35
+            spot_color = (0, 0, 255) if spot_count > 10 else (0, 150, 255)
+            cv2.putText(
+                frame_bgr,
+                f"Spots: {spot_count}",
+                (bar_x, spot_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                spot_color,
+                1,
+                cv2.LINE_AA,
+            )
+        
+        return frame_bgr

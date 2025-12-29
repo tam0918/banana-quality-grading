@@ -166,6 +166,17 @@ def main() -> None:
         default=100,
         help="Early-stopping patience (epochs).",
     )
+    parser.add_argument(
+        "--copy-to-weights",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Copy trained best.pt to weights/best.pt for the app (default: true).",
+    )
+    parser.add_argument(
+        "--weights-out",
+        default=os.path.join("weights", "best.pt"),
+        help="Destination path when --copy-to-weights is enabled. Default: weights/best.pt",
+    )
     parser.add_argument("--download-only", action="store_true", help="Only download+unzip dataset, skip training")
     args = parser.parse_args()
 
@@ -243,8 +254,18 @@ def main() -> None:
         raise
 
     best = Path("runs_banana") / "yolov8n_banana_cls" / "weights" / "best.pt"
-    print(f"\nOK. Best weights: {best}")
-    print("Copy to weights/best.pt for the app, or update main.py model path selection.")
+    print(f"\n[OK] Best weights: {best}")
+
+    if args.copy_to_weights:
+        dst = Path(args.weights_out)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(best, dst)
+            print(f"[OK] Copied -> {dst}")
+        except Exception as e:
+            print(f"[WARN] Không copy được best.pt sang {dst}: {type(e).__name__}: {e}")
+    else:
+        print("[INFO] --no-copy-to-weights: giữ weights trong runs_banana/.")
 
 
 if __name__ == "__main__":

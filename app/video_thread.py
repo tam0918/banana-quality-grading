@@ -5,6 +5,8 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional, Union
 
+import os
+
 import cv2
 import numpy as np
 
@@ -28,7 +30,8 @@ class VideoThread:
         on_frame: Optional[Callable[[FramePacket], None]] = None,
     ):
         self._source = source
-        self._grader = grader or BananaGrader(model_path="weights/best.pt", data_yaml_path="datasets/data.yaml")
+        data_yaml_path = "datasets/data.yaml" if os.path.exists("datasets/data.yaml") else None
+        self._grader = grader or BananaGrader(model_path="weights/best.pt", data_yaml_path=data_yaml_path)
         self._on_frame = on_frame
 
         self._stop = threading.Event()

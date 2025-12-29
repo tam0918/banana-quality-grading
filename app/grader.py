@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
+import os
 
 try:
     import cv2
@@ -20,6 +21,13 @@ try:
 except Exception:  # pragma: no cover
     YOLO = None  # type: ignore
 
+try:
+    from app.banana_analyzer import BananaAnalyzer, BananaFeatures, MultiScaleDetector
+except Exception:  # pragma: no cover
+    BananaAnalyzer = None  # type: ignore
+    BananaFeatures = None  # type: ignore
+    MultiScaleDetector = None  # type: ignore
+
 
 @dataclass(frozen=True)
 class GradeResult:
@@ -30,6 +38,11 @@ class GradeResult:
     confidence: float  # 0..1
     bbox_xyxy: Optional[Tuple[int, int, int, int]]
     debug: Dict[str, float]
+    # Enhanced features from BananaAnalyzer
+    quality_score: float = 0.0  # 0-1 overall quality
+    color_features: Optional[Dict[str, float]] = None
+    spot_count: int = 0
+    refined: bool = False  # True if refined by feature analysis
 
 
 class BananaGrader:
@@ -56,11 +69,16 @@ class BananaGrader:
         device: Union[int, str, None] = None,
         conf: float = 0.25,
         iou: float = 0.45,
+        # Enhanced analysis options (based on research paper)
+        enable_enhanced_analysis: bool = True,
+        enable_multi_scale: bool = False,
+        enable_preprocessing: bool = True,
+        enable_feature_refinement: bool = True,
     ):
         # model_path is the *classifier* weights (e.g., weights/best.pt)
         self.model_path = model_path
         self.detector_model_path = detector_model_path
-        env = __import__("os").environ
+        env = os.environ
         self.detector_backend = (detector_backend or env.get("BANANA_DETECTOR_BACKEND", "yolo")).strip().lower()
         self.haar_cascade_path = (
             haar_cascade_path
@@ -95,12 +113,68 @@ class BananaGrader:
 
         self._haar = None
 
+        # Temporal stabilization (useful when you don't have a custom detector dataset).
+        # Holds the last successful bbox for N subsequent frames if detector temporarily misses.
+        # Disable by setting BANANA_BBOX_HOLD=0.
+        try:
+            self._bbox_hold_frames = max(0, int(env.get("BANANA_BBOX_HOLD", "5")))
+        except Exception:
+            self._bbox_hold_frames = 5
+        self._bbox_hold_remaining = 0
+        self._last_bbox_xyxy: Optional[Tuple[int, int, int, int]] = None
+
         if self.data_yaml_path:
             auto = self._mapping_from_data_yaml(self.data_yaml_path)
             if auto:
                 self.class_id_to_category_key = auto
 
+        # Enhanced analysis settings (based on research paper methodology)
+        self.enable_enhanced_analysis = enable_enhanced_analysis
+        self.enable_multi_scale = enable_multi_scale
+        self.enable_preprocessing = enable_preprocessing
+        self.enable_feature_refinement = enable_feature_refinement
+        
+        # Initialize BananaAnalyzer for advanced feature extraction
+        self._analyzer: Optional[BananaAnalyzer] = None
+        self._multi_scale_detector: Optional[MultiScaleDetector] = None
+        
+        if BananaAnalyzer is not None and self.enable_enhanced_analysis:
+            self._analyzer = BananaAnalyzer(
+                enable_color_analysis=True,
+                enable_morphology=True,
+                enable_texture=True,
+            )
+            if self.enable_multi_scale and MultiScaleDetector is not None:
+                self._multi_scale_detector = MultiScaleDetector(
+                    scales=[0.75, 1.0, 1.25],
+                    nms_threshold=0.4,
+                )
+
         self._load_models()
+
+    def _update_last_bbox(self, bbox_xyxy: Tuple[int, int, int, int]) -> None:
+        if self._bbox_hold_frames <= 0:
+            return
+        self._last_bbox_xyxy = bbox_xyxy
+        self._bbox_hold_remaining = int(self._bbox_hold_frames)
+
+    def _try_use_held_bbox(self, frame_bgr: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
+        if self._bbox_hold_frames <= 0:
+            return None
+        if self._last_bbox_xyxy is None:
+            return None
+        if self._bbox_hold_remaining <= 0:
+            return None
+
+        self._bbox_hold_remaining -= 1
+
+        h, w = frame_bgr.shape[:2]
+        x1, y1, x2, y2 = self._last_bbox_xyxy
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w - 1, x2), min(h - 1, y2)
+        if x2 <= x1 or y2 <= y1:
+            return None
+        return (x1, y1, x2, y2)
 
     def _load_haar(self) -> Optional[object]:
         if cv2 is None:
@@ -307,17 +381,23 @@ class BananaGrader:
         if self.detector_backend == "haar":
             bbox = self._haar_detect_bbox(frame_bgr)
             if bbox is None:
-                return GradeResult(
-                    category_key="none",
-                    label_vi="Không phát hiện chuối",
-                    label_en="No banana detected",
-                    status_vi="—",
-                    confidence=0.0,
-                    bbox_xyxy=None,
-                    debug={"detections": 0.0},
-                )
+                held = self._try_use_held_bbox(frame_bgr)
+                if held is not None:
+                    x1, y1, x2, y2 = held
+                    best_det_conf = 0.01
+                else:
+                    return GradeResult(
+                        category_key="none",
+                        label_vi="Không phát hiện chuối",
+                        label_en="No banana detected",
+                        status_vi="—",
+                        confidence=0.0,
+                        bbox_xyxy=None,
+                        debug={"detections": 0.0},
+                    )
             x1, y1, x2, y2 = bbox
             best_det_conf = 1.0  # Haar Cascade doesn't provide a real confidence
+            self._update_last_bbox((x1, y1, x2, y2))
         else:
             banana_id = self._find_banana_class_id()
             if banana_id is None:
@@ -351,27 +431,37 @@ class BananaGrader:
                 )
 
             if not det:
-                return GradeResult(
-                    category_key="none",
-                    label_vi="Không phát hiện chuối",
-                    label_en="No banana detected",
-                    status_vi="—",
-                    confidence=0.0,
-                    bbox_xyxy=None,
-                    debug={"detections": 0.0},
-                )
+                held = self._try_use_held_bbox(frame_bgr)
+                if held is not None:
+                    x1, y1, x2, y2 = held
+                    best_det_conf = 0.01
+                else:
+                    return GradeResult(
+                        category_key="none",
+                        label_vi="Không phát hiện chuối",
+                        label_en="No banana detected",
+                        status_vi="—",
+                        confidence=0.0,
+                        bbox_xyxy=None,
+                        debug={"detections": 0.0},
+                    )
 
             boxes = getattr(det[0], "boxes", None)
             if boxes is None or len(boxes) == 0:
-                return GradeResult(
-                    category_key="none",
-                    label_vi="Không phát hiện chuối",
-                    label_en="No banana detected",
-                    status_vi="—",
-                    confidence=0.0,
-                    bbox_xyxy=None,
-                    debug={"detections": 0.0},
-                )
+                held = self._try_use_held_bbox(frame_bgr)
+                if held is not None:
+                    x1, y1, x2, y2 = held
+                    best_det_conf = 0.01
+                else:
+                    return GradeResult(
+                        category_key="none",
+                        label_vi="Không phát hiện chuối",
+                        label_en="No banana detected",
+                        status_vi="—",
+                        confidence=0.0,
+                        bbox_xyxy=None,
+                        debug={"detections": 0.0},
+                    )
 
             best_box = None
             best_det_conf = -1.0
@@ -389,21 +479,28 @@ class BananaGrader:
                     best_box = b
 
             if best_box is None:
-                return GradeResult(
-                    category_key="none",
-                    label_vi="Không phát hiện chuối",
-                    label_en="No banana detected",
-                    status_vi="—",
-                    confidence=0.0,
-                    bbox_xyxy=None,
-                    debug={"detections": float(len(boxes))},
-                )
+                held = self._try_use_held_bbox(frame_bgr)
+                if held is not None:
+                    x1, y1, x2, y2 = held
+                    best_det_conf = 0.01
+                else:
+                    return GradeResult(
+                        category_key="none",
+                        label_vi="Không phát hiện chuối",
+                        label_en="No banana detected",
+                        status_vi="—",
+                        confidence=0.0,
+                        bbox_xyxy=None,
+                        debug={"detections": float(len(boxes))},
+                    )
 
-            xyxy = best_box.xyxy
-            try:
-                x1, y1, x2, y2 = [int(v) for v in xyxy[0].tolist()]
-            except Exception:
-                x1, y1, x2, y2 = [int(v) for v in xyxy]
+            if best_box is not None:
+                xyxy = best_box.xyxy
+                try:
+                    x1, y1, x2, y2 = [int(v) for v in xyxy[0].tolist()]
+                except Exception:
+                    x1, y1, x2, y2 = [int(v) for v in xyxy]
+                self._update_last_bbox((x1, y1, x2, y2))
 
         h, w = frame_bgr.shape[:2]
         x1, y1 = max(0, x1), max(0, y1)
@@ -483,6 +580,69 @@ class BananaGrader:
             "cls_id": float(top1),
         }
 
+        if best_det_conf <= 0.02:
+            debug["bbox_held"] = 1.0
+
+        # ============================================================
+        # Enhanced Analysis (Based on Research Paper Methodology)
+        # ============================================================
+        quality_score = 0.0
+        color_features = None
+        spot_count = 0
+        refined = False
+        
+        if self._analyzer is not None and self.enable_enhanced_analysis:
+            try:
+                # Preprocess frame for better analysis
+                if self.enable_preprocessing:
+                    processed_crop = self._analyzer.preprocess_frame(
+                        crop, enhance_contrast=True, denoise=True
+                    )
+                else:
+                    processed_crop = crop
+                
+                # Extract features from banana region
+                features = self._analyzer.analyze(processed_crop)
+                
+                quality_score = features.quality_score
+                spot_count = features.spot_count
+                color_features = {
+                    "yellow_ratio": features.yellow_ratio,
+                    "green_ratio": features.green_ratio,
+                    "brown_ratio": features.brown_ratio,
+                    "color_uniformity": features.color_uniformity,
+                    "solidity": features.solidity,
+                    "texture_variance": features.texture_variance,
+                }
+                
+                # Add feature info to debug
+                debug["quality_score"] = quality_score
+                debug["yellow_ratio"] = features.yellow_ratio
+                debug["green_ratio"] = features.green_ratio
+                debug["brown_ratio"] = features.brown_ratio
+                debug["spot_count"] = float(spot_count)
+                
+                # Refine category using feature analysis (ensemble approach)
+                if self.enable_feature_refinement:
+                    refined_category, refined_conf = self._analyzer.refine_category_with_features(
+                        category_key, features, confidence
+                    )
+                    
+                    if refined_category != category_key:
+                        category_key = refined_category
+                        label_vi, label_en, status_vi = self._category_info[category_key]
+                        refined = True
+                        debug["refined"] = 1.0
+                        debug["original_category"] = debug.get("cls_id", 0.0)
+                    
+                    # Use ensemble confidence
+                    confidence = refined_conf
+                    debug["ensemble_conf"] = refined_conf
+                    
+            except Exception as e:
+                debug["analyzer_error"] = 1.0
+                debug["analyzer_error_msg"] = str(e)[:50]
+
         return GradeResult(
             category_key=category_key,
             label_vi=label_vi,
@@ -491,4 +651,8 @@ class BananaGrader:
             confidence=confidence,
             bbox_xyxy=(x1, y1, x2, y2),
             debug=debug,
+            quality_score=quality_score,
+            color_features=color_features,
+            spot_count=spot_count,
+            refined=refined,
         )

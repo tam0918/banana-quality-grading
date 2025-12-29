@@ -38,6 +38,7 @@ DEFAULT_FONT_CANDIDATES = [
 # - Hoặc chỉnh danh sách DEFAULT_MODEL_CANDIDATES bên dưới
 
 DEFAULT_MODEL_CANDIDATES = [
+    "yolov8n_banana_cls3_best.pt",
     os.path.join("weights", "best.pt"),
     os.path.join("runs_banana", "yolov8n_banana", "weights", "best.pt"),
 ]
