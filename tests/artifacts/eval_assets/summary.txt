@@ -1,0 +1,5 @@
+Counts by category_key:
+- defective: 3
+- export: 3
+- none: 4
+- overripe: 3

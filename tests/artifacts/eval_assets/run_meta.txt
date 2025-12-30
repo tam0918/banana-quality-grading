@@ -1,0 +1,7 @@
+timestamp=2025-12-30T22:36:09
+images=C:\Users\Administrator\Documents\GitHub\banana-quality-grading\tests\assets
+classifier=C:\Users\Administrator\Documents\GitHub\banana-quality-grading\weights\best.pt
+detector=C:\Users\Administrator\Documents\GitHub\banana-quality-grading\yolov8n.pt
+data_yaml=
+device=auto
+bbox_hold=0

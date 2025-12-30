@@ -1,0 +1,15 @@
+bbox_xyxy,category_key,cls_id,cls_name,confidence,file,status_vi
+,overripe,0,overripe,0.8382,1.jpg,—
+,unripe,3,unripe,0.9987,10.jpg,—
+,unripe,3,unripe,0.9993,11.jpg,—
+,unripe,3,unripe,0.9990,12.jpg,—
+,defective,2,rotten,0.4135,13.jpg,—
+,overripe,0,overripe,0.8772,2.jpg,—
+,overripe,0,overripe,0.8843,3.jpg,—
+,export,1,ripe,0.9848,4.jpg,—
+,export,1,ripe,0.9725,5.jpg,—
+,export,1,ripe,0.5746,6.jpg,—
+,defective,2,rotten,0.8919,7.jpg,—
+,defective,2,rotten,0.9772,8.jpg,—
+,defective,2,rotten,0.9953,9.jpg,—
+,export,1,ripe,0.9834,banana.jpg,—
