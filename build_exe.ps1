@@ -28,4 +28,8 @@ if ($Clean) { $Args += "--clean" }
 
 & $Py -m PyInstaller @Args
 
+if ($LASTEXITCODE -ne 0) {
+  throw "PyInstaller failed with exit code $LASTEXITCODE"
+}
+
 Write-Host "Done. Output is under .\\dist\\BananaQualityGrading\\BananaQualityGrading.exe" -ForegroundColor Green

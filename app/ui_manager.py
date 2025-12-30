@@ -36,7 +36,13 @@ class UI_Manager:
         self._root.geometry("1200x720")
         self._root.minsize(1100, 650)
 
-        data_yaml_path = "datasets/data.yaml" if os.path.exists("datasets/data.yaml") else None
+        # Class-name mapping for the classifier (optional but recommended).
+        # Keep backward compatibility with older path datasets/data.yaml.
+        data_yaml_candidates = [
+            os.path.join("datasets", "classifier_data.yaml"),
+            os.path.join("datasets", "data.yaml"),
+        ]
+        data_yaml_path = next((p for p in data_yaml_candidates if os.path.exists(p)), None)
         self._grader = BananaGrader(
             model_path=config.model_path,
             detector_model_path=config.detector_model_path,
@@ -77,11 +83,20 @@ class UI_Manager:
         self._left.grid(row=0, column=0, sticky="nsew", padx=16, pady=16)
         self._left.grid_rowconfigure(0, weight=1)
         self._left.grid_columnconfigure(0, weight=1)
+        # Prevent the video image size from forcing this column to grow and hiding the right panel.
+        try:
+            self._left.grid_propagate(False)
+        except Exception:
+            pass
 
         self._right = ctk.CTkFrame(self._root, corner_radius=16)
         self._right.grid(row=0, column=1, sticky="nsew", padx=(0, 16), pady=16)
         self._right.grid_rowconfigure(7, weight=1)
         self._right.grid_columnconfigure(0, weight=1)
+        try:
+            self._right.grid_propagate(False)
+        except Exception:
+            pass
 
         # Video canvas
         self._video_label = ctk.CTkLabel(self._left, text="", corner_radius=16)
@@ -204,8 +219,8 @@ class UI_Manager:
 
     def _on_frame_from_thread(self, packet: FramePacket) -> None:
         # Never touch tkinter from the capture thread.
-        # Copy frame to avoid sharing mutable memory between threads.
-        safe_packet = FramePacket(frame_bgr=packet.frame_bgr.copy(), grade=packet.grade, fps=packet.fps)
+        # Avoid a full-frame copy here (expensive). UI will copy only when annotating.
+        safe_packet = FramePacket(frame_bgr=packet.frame_bgr, grade=packet.grade, fps=packet.fps)
         with self._packet_lock:
             self._latest_packet = safe_packet
 
@@ -293,7 +308,8 @@ class UI_Manager:
         return (180, 180, 180)
 
     def _annotate_frame(self, frame_bgr: np.ndarray, grade: GradeResult) -> np.ndarray:
-        out = frame_bgr
+        # Draw overlays on a copy so the source frame can be safely reused elsewhere.
+        out = frame_bgr.copy()
         if grade.bbox_xyxy is None:
             return out
 
@@ -330,9 +346,15 @@ class UI_Manager:
         return out
 
     def _render_frame(self, frame_bgr: np.ndarray) -> None:
-        # Fit into label size while keeping aspect ratio
-        target_w = max(640, self._left.winfo_width() - 60)
-        target_h = max(360, self._left.winfo_height() - 60)
+        # Fit into the *label* size while keeping aspect ratio.
+        # Using the label bounds prevents the video from resizing the grid and hiding right-side widgets.
+        target_w = max(1, self._video_label.winfo_width())
+        target_h = max(1, self._video_label.winfo_height())
+
+        # On first few ticks, Tk may report 1x1; fall back to the left container size.
+        if target_w <= 2 or target_h <= 2:
+            target_w = max(1, self._left.winfo_width() - 28)
+            target_h = max(1, self._left.winfo_height() - 28)
 
         h, w = frame_bgr.shape[:2]
         scale = min(target_w / max(1, w), target_h / max(1, h))

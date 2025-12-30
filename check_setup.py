@@ -17,8 +17,12 @@ def main() -> int:
     classifier = str(Path("weights") / "best.pt")
     detector_custom = str(Path("weights") / "detector.pt")
     detector_coco = "yolov8n.pt"
-    font = str(Path("assets") / "fonts" / "Roboto-Regular.ttf")
-    data_yaml = str(Path("datasets") / "data.yaml")
+    font_repo = str(Path("assets") / "fonts" / "Roboto-Regular.ttf")
+    font_system_candidates = [
+        "C:/Windows/Fonts/segoeui.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    ]
+    class_names_yaml = str(Path("datasets") / "classifier_data.yaml")
 
     print("[Models]")
     print(f"- Classifier (required): {classifier} -> {'OK' if _exists(classifier) else 'MISSING'}")
@@ -28,8 +32,10 @@ def main() -> int:
     print(f"- Detector fallback (COCO): {detector_coco} -> {'OK' if _exists(detector_coco) else 'MISSING'}")
 
     print("\n[Assets]")
-    print(f"- Vietnamese font (optional): {font} -> {'OK' if _exists(font) else 'MISSING'}")
-    print(f"- datasets/data.yaml (optional mapping): {data_yaml} -> {'OK' if _exists(data_yaml) else 'MISSING'}")
+    font_ok = _exists(font_repo) or any(_exists(p) for p in font_system_candidates)
+    font_hint = font_repo if _exists(font_repo) else (next((p for p in font_system_candidates if _exists(p)), font_repo))
+    print(f"- Vietnamese font (recommended): {font_hint} -> {'OK' if font_ok else 'MISSING'}")
+    print(f"- Class names mapping (recommended): {class_names_yaml} -> {'OK' if _exists(class_names_yaml) else 'MISSING'}")
 
     print("\n[What this means]")
     if _exists(classifier):
@@ -57,8 +63,11 @@ def main() -> int:
         print("- Nếu bạn CHƯA có dataset bbox: cứ dùng yolov8n.pt là đủ demo.")
         print(f"- Nếu bạn CÓ dataset bbox YOLOv8: {py} training_script.py --device auto --epochs 50 --imgsz 640")
 
-    if not _exists(font):
-        print("- (Tuỳ chọn) Copy font .ttf vào assets/fonts/Roboto-Regular.ttf để hiện tiếng Việt đẹp khi build exe.")
+    if not font_ok:
+        print("- (Khuyến nghị) Dùng font hệ thống (Segoe UI/Arial) hoặc đặt font .ttf vào assets/fonts/Roboto-Regular.ttf.")
+
+    if not _exists(class_names_yaml):
+        print("- (Khuyến nghị) Tạo datasets/classifier_data.yaml để map class-id -> nhãn đúng.")
 
     return 0
 

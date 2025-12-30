@@ -8,7 +8,10 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_all
 
 # Project root
-ROOT = Path(__file__).resolve().parent
+# Note: When PyInstaller executes the spec file, `__file__` may not be defined
+# in some environments. PyInstaller provides `SPECPATH` for this purpose.
+_spec_dir = Path(globals().get("SPECPATH") or os.getcwd()).resolve()
+ROOT = _spec_dir
 
 block_cipher = None
 
@@ -72,6 +75,7 @@ add_if_exists(ROOT / "yolo11n.pt", ".")
 add_if_exists(ROOT / "yolov8n-cls.pt", ".")
 add_if_exists(ROOT / "yolov8n.pt", ".")
 add_if_exists(ROOT / "datasets" / "data.yaml", os.path.join("datasets"))
+add_if_exists(ROOT / "datasets" / "classifier_data.yaml", os.path.join("datasets"))
 add_tree_if_exists(ROOT / "assets" / "fonts", os.path.join("assets", "fonts"))
 
 

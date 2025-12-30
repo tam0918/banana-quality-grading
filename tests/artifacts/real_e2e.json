@@ -16,7 +16,7 @@
   "spot_count": 84,
   "refined": false,
   "debug": {
-    "det_conf": 0.8405835628509521,
+    "det_conf": 0.8405836820602417,
     "cls_conf": 0.9999991655349731,
     "cls_id": 1.0,
     "quality_score": 0.5099648477334956,

@@ -69,88 +69,13 @@ def resolve_data_yaml() -> str:
         except Exception as e:
             print(f"[WARN] Roboflow download failed, fallback to local datasets/: {type(e).__name__}: {e}")
 
-    # Local fallback
-    return str(Path("datasets") / "data.yaml")
+    # Local fallback for REAL detector dataset (YOLOv8 detection format)
+    return str(Path("datasets") / "detector" / "data.yaml")
 
 
 def _write_yolo_label(path: Path, cls_id: int, xc: float, yc: float, w: float, h: float) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"{cls_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}\n", encoding="utf-8")
-
-
-def create_smoke_dataset(root: Path) -> Path:
-    """Create a tiny YOLOv8 dataset for quick pipeline validation.
-
-    This is NOT for accuracy; it only proves training runs.
-    """
-    import numpy as np
-    import cv2
-
-    (root / "train" / "images").mkdir(parents=True, exist_ok=True)
-    (root / "train" / "labels").mkdir(parents=True, exist_ok=True)
-    (root / "valid" / "images").mkdir(parents=True, exist_ok=True)
-    (root / "valid" / "labels").mkdir(parents=True, exist_ok=True)
-
-    # Detector smoke dataset should be a single class: banana
-    names: List[str] = ["banana"]
-    data_yaml = root / "data.yaml"
-    data_yaml.write_text(
-        "\n".join(
-            [
-                f"path: {root.as_posix()}",
-                "train: train/images",
-                "val: valid/images",
-                "names:",
-                *[f"  {i}: {n}" for i, n in enumerate(names)],
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    def gen_one(split: str, idx: int) -> None:
-        h, w = 480, 640
-        img = np.zeros((h, w, 3), dtype=np.uint8)
-        img[:] = (20, 20, 20)
-
-        # Draw a fake "banana" ellipse
-        cls_id = 0
-        center = (random.randint(180, 460), random.randint(160, 320))
-        axes = (random.randint(120, 170), random.randint(40, 70))
-        angle = random.randint(-35, 35)
-        # Any banana-like color; this is just a smoke test.
-        color = (0, 220, 220)  # yellow-ish
-        cv2.ellipse(img, center, axes, angle, 0, 360, color, -1)
-
-        # Add some random spots to make texture less trivial
-        for _ in range(40):
-            x = random.randint(0, w - 1)
-            y = random.randint(0, h - 1)
-            r = random.randint(2, 8)
-            cv2.circle(img, (x, y), r, (0, 0, 0), -1)
-
-        img_path = root / split / "images" / f"smoke_{idx}.jpg"
-        cv2.imwrite(str(img_path), img)
-
-        # Approx bbox for the ellipse (rough)
-        x1 = max(0, center[0] - axes[0])
-        y1 = max(0, center[1] - axes[1])
-        x2 = min(w - 1, center[0] + axes[0])
-        y2 = min(h - 1, center[1] + axes[1])
-        xc = ((x1 + x2) / 2) / w
-        yc = ((y1 + y2) / 2) / h
-        bw = (x2 - x1) / w
-        bh = (y2 - y1) / h
-
-        label_path = root / split / "labels" / f"smoke_{idx}.txt"
-        _write_yolo_label(label_path, cls_id, xc, yc, bw, bh)
-
-    for i in range(6):
-        gen_one("train", i)
-    for i in range(2):
-        gen_one("valid", i)
-
-    return data_yaml
 
 
 def _pick_device(requested: str) -> str:
@@ -193,11 +118,6 @@ def main() -> None:
         help="Early-stopping patience (epochs).",
     )
     parser.add_argument(
-        "--smoke",
-        action="store_true",
-        help="Create a tiny synthetic dataset and train 1 epoch (pipeline test)",
-    )
-    parser.add_argument(
         "--copy-to-weights",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -222,19 +142,12 @@ def main() -> None:
     #
     # Nếu không set env, script sẽ dùng đường dẫn local: datasets/data.yaml
 
-    if args.smoke:
-        print("[INFO] Running SMOKE training (synthetic dataset, very small).")
-        smoke_root = Path("datasets_smoke")
-        data_yaml = Path(create_smoke_dataset(smoke_root))
-        args.epochs = 1
-        args.imgsz = min(args.imgsz, 320)
-    else:
-        data_yaml = Path(args.data) if args.data else Path(resolve_data_yaml())
+    data_yaml = Path(args.data) if args.data else Path(resolve_data_yaml())
 
     if not data_yaml.exists():
         raise FileNotFoundError(
             f"Không tìm thấy {data_yaml}.\n"
-            "Cách 1: Giải nén dataset YOLOv8 vào thư mục datasets/ để có datasets/data.yaml\n"
+            "Cách 1: Giải nén dataset YOLOv8 vào thư mục datasets/detector/ để có datasets/detector/data.yaml\n"
             "Cách 2: Set ROBOFLOW_* env vars để tự tải dataset từ Roboflow."
         )
 
