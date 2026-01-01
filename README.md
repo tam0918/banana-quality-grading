@@ -116,6 +116,17 @@ App sẽ tự dò `weights/best.pt` trước; nếu không thấy sẽ hiện tr
 ## 4) Lưu ý
 - Hệ thống hiện dùng YOLOv8 object detection. Độ chính xác phụ thuộc dataset + chất lượng label + ánh sáng khi quay.
 
+## 4.1) Tối ưu tốc độ (khuyến nghị khi build .exe)
+Bạn có thể điều chỉnh qua biến môi trường (không cần sửa code):
+- `BANANA_MAX_FRUITS=6` (mặc định): số quả tối đa xử lý mỗi frame.
+- `BANANA_DET_IMGSZ=640` (mặc định): giảm xuống `416` hoặc `320` để chạy nhanh hơn (đổi lại detector kém hơn).
+- `BANANA_CLS_IMGSZ=416` (mặc định): giảm xuống `224` để classifier nhanh hơn.
+- `BANANA_MAX_INFER_FPS=0` (mặc định tắt): set `10` hoặc `15` để cap tốc độ inference và giữ UI mượt trên CPU.
+- `BANANA_ANALYZE_POLICY=all` (mặc định):
+	- `defective_or_uncertain` + `BANANA_ANALYZE_UNCERTAIN_THRESH=0.55` để giảm tải analyzer nhưng vẫn bắt hỏng tốt.
+	- `BANANA_ANALYZE_EVERY=2` để chỉ chạy analyzer mỗi 2 frame.
+- `BANANA_TORCH_THREADS=4`: giới hạn số threads CPU của torch (thường mượt hơn trên máy yếu).
+
 ## 5) Build Android (APK) có được không?
 Có, nhưng **không thể “đóng gói trực tiếp”** project hiện tại thành APK theo kiểu 1-click.
 

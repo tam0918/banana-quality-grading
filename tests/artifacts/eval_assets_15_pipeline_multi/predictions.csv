@@ -1,0 +1,28 @@
+bbox_xyxy,category_key,category_key_by_name,cls_id,cls_name,confidence,debug.brown_ratio,debug.cls_conf,debug.cls_id,debug.det_conf,debug.ensemble_conf,debug.green_ratio,debug.quality_score,debug.refined,debug.spot_count,debug.yellow_ratio,file,instance,label_en,label_vi,quality_score,spot_count,status_vi
+"7,127,393,341",overripe,overripe,0,overripe,1.0000,0.022791,0.999953,0.000000,0.912808,0.999953,0.002344,0.532999,,70.000000,0.988010,1.jpg,0,Overripe,Quá Chín,0.5330,70,Cần bán/Ăn ngay
+,none,,,,0.0000,,,,,,,,,,,10.jpg,,No banana detected,Không phát hiện chuối,,,—
+,none,,,,0.0000,,,,,,,,,,,11.jpg,,No banana detected,Không phát hiện chuối,,,—
+,none,,,,0.0000,,,,,,,,,,,12.jpg,,No banana detected,Không phát hiện chuối,,,—
+"122,331,939,801",export,export,1,ripe,0.9597,0.007399,0.959653,1.000000,0.524015,0.959653,0.929401,0.452494,,177.000000,0.095413,13.jpg,0,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4525,177,Bảo quản & Ship hàng
+"167,677,428,932",unripe,unripe,3,unripe,0.8877,0.000335,0.887697,3.000000,0.632024,0.887697,0.806118,0.455351,,64.000000,0.215018,14.jpg,0,Unripe,Chuối Xanh,0.4554,64,Chưa thu hoạch
+"412,96,511,396",unripe,unripe,3,unripe,1.0000,0.000166,1.000000,3.000000,0.481909,1.000000,0.957606,0.472754,,22.000000,0.041399,14.jpg,1,Unripe,Chuối Xanh,0.4728,22,Chưa thu hoạch
+"501,575,814,871",unripe,unripe,3,unripe,0.9390,0.000013,0.938989,3.000000,0.376586,0.938989,0.802343,0.458691,,78.000000,0.256751,14.jpg,2,Unripe,Chuối Xanh,0.4587,78,Chưa thu hoạch
+"121,199,974,963",export,export,1,ripe,0.9993,0.000750,0.999349,1.000000,0.364982,0.999349,0.882466,0.444739,,350.000000,0.135538,14.jpg,3,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4447,350,Bảo quản & Ship hàng
+"509,85,612,403",unripe,unripe,3,unripe,1.0000,0.000000,0.999964,3.000000,0.333551,0.999964,0.977850,0.480619,,26.000000,0.054265,14.jpg,4,Unripe,Chuối Xanh,0.4806,26,Chưa thu hoạch
+"228,132,381,443",unripe,unripe,3,unripe,1.0000,0.000233,0.999989,3.000000,0.320337,0.999989,0.975341,0.478274,,53.000000,0.008886,14.jpg,5,Unripe,Chuối Xanh,0.4783,53,Chưa thu hoạch
+"176,661,437,930",export,export,1,ripe,0.9737,0.024881,0.973734,1.000000,0.785556,0.973734,0.156928,0.495165,,100.000000,0.823097,15.jpg,0,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4952,100,Bảo quản & Ship hàng
+"106,56,978,927",unripe,export,1,ripe,0.8866,0.009567,0.778381,1.000000,0.417120,0.886566,0.649168,0.457961,1.000000,507.000000,0.367724,15.jpg,1,Unripe,Chuối Xanh,0.4580,507,Chưa thu hoạch
+"419,90,518,396",unripe,unripe,3,unripe,1.0000,0.000000,0.999976,3.000000,0.410410,0.999976,0.962734,0.474106,,22.000000,0.041388,15.jpg,2,Unripe,Chuối Xanh,0.4741,22,Chưa thu hoạch
+"357,386,452,659",unripe,unripe,3,unripe,1.0000,0.000124,0.999996,3.000000,0.305252,0.999996,0.832942,0.499778,,20.000000,0.194578,15.jpg,3,Unripe,Chuối Xanh,0.4998,20,Chưa thu hoạch
+"516,83,620,402",unripe,unripe,3,unripe,1.0000,0.000000,0.999994,3.000000,0.298930,0.999994,0.977658,0.487253,,24.000000,0.073758,15.jpg,4,Unripe,Chuối Xanh,0.4873,24,Chưa thu hoạch
+"509,576,818,871",defective,export,1,ripe,0.8559,0.073792,0.711728,1.000000,0.290983,0.855864,0.183613,0.484171,1.000000,85.000000,0.819369,15.jpg,5,Defective,Bị bệnh/Hỏng,0.4842,85,Loại bỏ
+"0,67,412,266",overripe,overripe,0,overripe,1.0000,0.031023,0.999999,0.000000,0.358286,0.999999,0.000195,0.524300,,82.000000,0.989471,2.jpg,0,Overripe,Quá Chín,0.5243,82,Cần bán/Ăn ngay
+"12,120,405,321",overripe,overripe,0,overripe,1.0000,0.030357,1.000000,0.000000,0.787633,1.000000,0.000670,0.526891,,60.000000,0.985659,3.jpg,0,Overripe,Quá Chín,0.5269,60,Cần bán/Ăn ngay
+"9,134,389,228",export,export,1,ripe,1.0000,0.029948,0.999981,1.000000,0.370466,0.999981,0.053403,0.454369,,55.000000,0.914346,4.jpg,0,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4544,55,Bảo quản & Ship hàng
+"63,125,377,397",export,export,1,ripe,1.0000,0.000000,1.000000,1.000000,0.799290,1.000000,0.798561,0.420108,,63.000000,0.000000,5.jpg,0,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4201,63,Bảo quản & Ship hàng
+"61,78,352,274",export,export,1,ripe,1.0000,0.081604,0.999993,1.000000,0.871903,0.999993,0.021372,0.467493,,30.000000,0.955786,6.jpg,0,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4675,30,Bảo quản & Ship hàng
+"0,262,126,362",export,export,1,ripe,0.9333,0.025240,0.933292,1.000000,0.283093,0.933292,0.092196,0.468218,,12.000000,0.872637,6.jpg,1,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4682,12,Bảo quản & Ship hàng
+"0,261,375,361",defective,defective,2,rotten,0.9969,0.039238,0.996906,2.000000,0.274386,0.996906,0.118615,0.480124,,31.000000,0.863231,6.jpg,2,Defective,Bị bệnh/Hỏng,0.4801,31,Loại bỏ
+"4,75,355,291",defective,defective,2,rotten,0.9996,0.043010,0.999638,2.000000,0.515658,0.999638,0.000000,0.492330,,89.000000,0.992224,7.jpg,0,Defective,Bị bệnh/Hỏng,0.4923,89,Loại bỏ
+"88,0,327,397",defective,defective,2,rotten,0.9462,0.016050,0.946229,2.000000,0.822160,0.946229,0.000000,0.502616,,147.000000,0.983788,8.jpg,0,Defective,Bị bệnh/Hỏng,0.5026,147,Loại bỏ
+,none,,,,0.0000,,,,,,,,,,,9.jpg,,No banana detected,Không phát hiện chuối,,,—

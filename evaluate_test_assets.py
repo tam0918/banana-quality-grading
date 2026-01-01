@@ -76,6 +76,40 @@ def _draw_annotation(
     return out
 
 
+def _grade_color_bgr(key: str) -> Tuple[int, int, int]:
+    # Mirror UI colors: Unripe=Green, Export=Blue, Overripe=Orange, Defective=Red.
+    if key == "unripe":
+        return (0, 255, 0)
+    if key == "export":
+        return (255, 0, 0)
+    if key == "overripe":
+        return (0, 165, 255)
+    if key == "defective":
+        return (0, 0, 255)
+    return (180, 180, 180)
+
+
+def _draw_multi_annotations(frame_bgr: np.ndarray, items) -> np.ndarray:
+    out = frame_bgr.copy()
+    if cv2 is None:
+        return out
+
+    for it in items or []:
+        bbox = getattr(it, "bbox_xyxy", None)
+        if bbox is None:
+            continue
+        x1, y1, x2, y2 = bbox
+        color = _grade_color_bgr(getattr(it, "category_key", "none"))
+        thickness = 4 if getattr(it, "category_key", "") == "defective" else 3
+        cv2.rectangle(out, (int(x1), int(y1)), (int(x2), int(y2)), color, thickness)
+
+        label = f"{getattr(it, 'category_key', 'none')} {float(getattr(it, 'confidence', 0.0)):.2f}"
+        ty = max(25, int(y1) - 10)
+        cv2.putText(out, label, (int(x1), ty), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2, cv2.LINE_AA)
+
+    return out
+
+
 def _mapping_from_data_yaml(path: str) -> Optional[dict[int, str]]:
     try:
         import yaml  # type: ignore
@@ -234,6 +268,7 @@ def main() -> int:
 
     rows = []
     counts: dict[str, int] = {}
+    counts_instances: dict[str, int] = {}
 
     annotated_dir = out_dir / "annotated"
     if args.save_images:
@@ -244,54 +279,78 @@ def main() -> int:
 
         if args.mode == "pipeline":
             assert grader is not None
-            res = grader.grade(frame_bgr)
+            fg = grader.grade_frame(frame_bgr)
+            res = fg.overall
 
+            # Frame-level count (overall decision)
             counts[res.category_key] = counts.get(res.category_key, 0) + 1
 
-            bbox = res.bbox_xyxy
-            bbox_str = "" if bbox is None else f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
+            # Per-instance rows
+            for idx, it in enumerate(fg.items):
+                counts_instances[it.category_key] = counts_instances.get(it.category_key, 0) + 1
 
-            row = {
-                "file": img_path.name,
-                "category_key": res.category_key,
-                "label_vi": res.label_vi,
-                "label_en": res.label_en,
-                "status_vi": res.status_vi,
-                "confidence": f"{res.confidence:.4f}",
-                "bbox_xyxy": bbox_str,
-                "quality_score": f"{getattr(res, 'quality_score', 0.0):.4f}",
-                "spot_count": str(getattr(res, 'spot_count', 0)),
-            }
+                bbox = it.bbox_xyxy
+                bbox_str = "" if bbox is None else f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
 
-            dbg = getattr(res, "debug", {}) or {}
-            for k in sorted(dbg.keys()):
-                row[f"debug.{k}"] = f"{float(dbg[k]):.6f}" if isinstance(dbg[k], (float, int)) else str(dbg[k])
+                row = {
+                    "file": img_path.name,
+                    "instance": str(idx),
+                    "category_key": it.category_key,
+                    "label_vi": it.label_vi,
+                    "label_en": it.label_en,
+                    "status_vi": it.status_vi,
+                    "confidence": f"{it.confidence:.4f}",
+                    "bbox_xyxy": bbox_str,
+                    "quality_score": f"{getattr(it, 'quality_score', 0.0):.4f}",
+                    "spot_count": str(getattr(it, 'spot_count', 0)),
+                }
 
-            # Enrich with classifier class-name based category inference (useful when class-id order differs)
-            try:
-                cls_id = int(float(dbg.get("cls_id"))) if "cls_id" in dbg else None
-            except Exception:
-                cls_id = None
-            cls_name = ""
-            inferred = ""
-            try:
-                clf = getattr(grader, "_classifier", None)
-                names = getattr(clf, "names", {}) if clf is not None else {}
-                if cls_id is not None and isinstance(names, dict):
-                    cls_name = str(names.get(cls_id, ""))
-                    inferred_cat = _infer_category_from_class_name(cls_name)
-                    inferred = inferred_cat or ""
-            except Exception:
-                pass
-            row["cls_id"] = "" if cls_id is None else str(cls_id)
-            row["cls_name"] = cls_name
-            row["category_key_by_name"] = inferred
+                dbg = getattr(it, "debug", {}) or {}
+                for k in sorted(dbg.keys()):
+                    row[f"debug.{k}"] = f"{float(dbg[k]):.6f}" if isinstance(dbg[k], (float, int)) else str(dbg[k])
 
-            rows.append(row)
+                # Enrich with classifier class-name based category inference
+                try:
+                    cls_id = int(float(dbg.get("cls_id"))) if "cls_id" in dbg else None
+                except Exception:
+                    cls_id = None
+                cls_name = ""
+                inferred = ""
+                try:
+                    clf = getattr(grader, "_classifier", None)
+                    names = getattr(clf, "names", {}) if clf is not None else {}
+                    if cls_id is not None and isinstance(names, dict):
+                        cls_name = str(names.get(cls_id, ""))
+                        inferred_cat = _infer_category_from_class_name(cls_name)
+                        inferred = inferred_cat or ""
+                except Exception:
+                    pass
+                row["cls_id"] = "" if cls_id is None else str(cls_id)
+                row["cls_name"] = cls_name
+                row["category_key_by_name"] = inferred
+
+                rows.append(row)
+
+            # If detector found nothing, still emit a row for visibility.
+            if not fg.items:
+                rows.append(
+                    {
+                        "file": img_path.name,
+                        "instance": "",
+                        "category_key": "none",
+                        "label_vi": "Không phát hiện chuối",
+                        "label_en": "No banana detected",
+                        "status_vi": "—",
+                        "confidence": f"{0.0:.4f}",
+                        "bbox_xyxy": "",
+                    }
+                )
 
             if args.save_images and cv2 is not None:
-                label = f"{res.category_key} ({res.confidence:.2f})"
-                annotated = _draw_annotation(frame_bgr, res.bbox_xyxy, label)
+                annotated = _draw_multi_annotations(frame_bgr, fg.items)
+                # Also print overall decision at top-left
+                overall_label = f"overall={res.category_key} ({res.confidence:.2f})"
+                annotated = _draw_annotation(annotated, None, overall_label)
                 cv2.imwrite(str(annotated_dir / img_path.name), annotated)
 
         else:
@@ -345,9 +404,13 @@ def main() -> int:
 
     # Write summary
     summary_path = out_dir / "summary.txt"
-    lines = ["Counts by category_key:"]
+    lines = ["Counts by category_key (frame-level overall):"]
     for k in sorted(counts.keys()):
         lines.append(f"- {k}: {counts[k]}")
+    lines.append("")
+    lines.append("Counts by category_key (instance-level):")
+    for k in sorted(counts_instances.keys()):
+        lines.append(f"- {k}: {counts_instances[k]}")
     summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     print(f"Wrote: {csv_path}")

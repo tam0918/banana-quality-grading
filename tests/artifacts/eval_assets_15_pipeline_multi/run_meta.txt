@@ -1,0 +1,9 @@
+timestamp=2026-01-01T08:19:08
+images=C:\Users\Administrator\Documents\GitHub\banana-quality-grading\tests\assets_15
+classifier=C:\Users\Administrator\Documents\GitHub\banana-quality-grading\yolov8n_banana_cls3_best.pt
+detector=C:\Users\Administrator\Documents\GitHub\banana-quality-grading\yolov8n.pt
+data_yaml=
+device=cpu
+device_resolved=cpu
+mode=pipeline
+bbox_hold=0

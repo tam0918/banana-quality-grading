@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image
 import os
 
-from .grader import BananaGrader, GradeResult
+from .grader import BananaGrader, FrameGrade, GradeResult
 from .text_overlay import FontConfig, UnicodeTextRenderer
 from .video_thread import FramePacket, VideoThread
 
@@ -235,7 +235,7 @@ class UI_Manager:
         if packet is not None:
             annotated = self._annotate_frame(packet.frame_bgr, packet.grade)
             self._render_frame(annotated)
-            self._update_right_panel(packet.grade, packet.fps)
+            self._update_right_panel(packet.grade.overall, packet.fps)
 
         self._root.after(20, self._ui_tick)
 
@@ -307,41 +307,46 @@ class UI_Manager:
             return (0, 0, 255)
         return (180, 180, 180)
 
-    def _annotate_frame(self, frame_bgr: np.ndarray, grade: GradeResult) -> np.ndarray:
+    def _annotate_frame(self, frame_bgr: np.ndarray, frame_grade: FrameGrade) -> np.ndarray:
         # Draw overlays on a copy so the source frame can be safely reused elsewhere.
         out = frame_bgr.copy()
-        if grade.bbox_xyxy is None:
+        if not frame_grade.items:
             return out
 
-        x1, y1, x2, y2 = grade.bbox_xyxy
-        color = self._grade_color_bgr(grade.category_key)
+        for item in frame_grade.items:
+            if item.bbox_xyxy is None:
+                continue
 
-        cv2.rectangle(out, (x1, y1), (x2, y2), color, 3)
+            x1, y1, x2, y2 = item.bbox_xyxy
+            color = self._grade_color_bgr(item.category_key)
 
-        label = f"{grade.label_vi}  •  {grade.confidence * 100:.0f}%"
-        label_en = f"{grade.label_en}  •  {grade.confidence * 100:.0f}%"
-        text_y = max(6, y1 - 36)
-        self._text.draw_label(
-            out,
-            text_vi=label,
-            text_en=label_en,
-            xy=(x1, text_y),
-            color_bgr=color,
-            bg_bgr=(0, 0, 0),
-        )
-        
-        # Draw enhanced quality overlay (below bbox)
-        if grade.quality_score > 0 and grade.color_features:
-            quality_y = y2 + 10
-            h, w = out.shape[:2]
-            if quality_y + 60 < h:  # Make sure there's space
-                self._text.draw_quality_info(
-                    out,
-                    quality_score=grade.quality_score,
-                    spot_count=grade.spot_count,
-                    color_features=grade.color_features,
-                    xy=(x1, quality_y),
-                )
+            thickness = 4 if item.category_key == "defective" else 3
+            cv2.rectangle(out, (x1, y1), (x2, y2), color, thickness)
+
+            label = f"{item.label_vi}  •  {item.confidence * 100:.0f}%"
+            label_en = f"{item.label_en}  •  {item.confidence * 100:.0f}%"
+            text_y = max(6, y1 - 36)
+            self._text.draw_label(
+                out,
+                text_vi=label,
+                text_en=label_en,
+                xy=(x1, text_y),
+                color_bgr=(255, 255, 255),
+                bg_bgr=color,
+            )
+
+            # Draw enhanced quality overlay (below bbox) only for defective to avoid clutter
+            if item.category_key == "defective" and item.quality_score > 0 and item.color_features:
+                quality_y = y2 + 10
+                h, _w = out.shape[:2]
+                if quality_y + 60 < h:
+                    self._text.draw_quality_info(
+                        out,
+                        quality_score=item.quality_score,
+                        spot_count=item.spot_count,
+                        color_features=item.color_features,
+                        xy=(x1, quality_y),
+                    )
         
         return out
 

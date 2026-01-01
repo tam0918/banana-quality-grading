@@ -11,13 +11,13 @@ import os
 import cv2
 import numpy as np
 
-from .grader import BananaGrader, GradeResult
+from .grader import BananaGrader, FrameGrade, GradeResult
 
 
 @dataclass
 class FramePacket:
     frame_bgr: np.ndarray
-    grade: GradeResult
+    grade: FrameGrade
     fps: float
 
 
@@ -52,7 +52,15 @@ class VideoThread:
             bbox_xyxy=None,
             debug={},
         )
+        self._latest_frame_grade: FrameGrade = FrameGrade(overall=self._latest_grade, items=[])
         self._latest_fps: float = 0.0
+
+        # Optional cap to keep CPU usage under control.
+        # When set (e.g., 10-15), grading runs at most that rate while UI can still update at 30fps.
+        try:
+            self._max_infer_fps = float(os.environ.get("BANANA_MAX_INFER_FPS", "0") or 0)
+        except Exception:
+            self._max_infer_fps = 0.0
 
     def start(self) -> None:
         if self._capture_thread and self._capture_thread.is_alive():
@@ -141,7 +149,7 @@ class VideoThread:
 
             with self._state_lock:
                 self._latest_fps = fps
-                grade = self._latest_grade
+                frame_grade = self._latest_frame_grade
 
             # Feed grading queue with newest frame (drop old).
             try:
@@ -159,7 +167,7 @@ class VideoThread:
             # Emit to UI at a bounded rate to reduce CPU spikes from image conversions.
             if self._on_frame is not None and (now - last_ui_emit) >= min_ui_interval_s:
                 last_ui_emit = now
-                self._on_frame(FramePacket(frame_bgr=frame, grade=grade, fps=fps))
+                self._on_frame(FramePacket(frame_bgr=frame, grade=frame_grade, fps=fps))
 
         try:
             self._cap.release()
@@ -178,10 +186,18 @@ class VideoThread:
 
             try:
                 # Grade on a copy so UI overlays can't affect the analysis.
-                grade = self._grader.grade(frame.copy())
+                t0 = time.time()
+                frame_grade = self._grader.grade_frame(frame.copy())
             except Exception:
                 # Keep the last grade if inference fails.
                 continue
 
             with self._state_lock:
-                self._latest_grade = grade
+                self._latest_frame_grade = frame_grade
+
+            # Throttle if requested.
+            if self._max_infer_fps and self._max_infer_fps > 0:
+                dt = time.time() - t0
+                target = 1.0 / max(1.0, float(self._max_infer_fps))
+                if dt < target:
+                    time.sleep(max(0.0, target - dt))

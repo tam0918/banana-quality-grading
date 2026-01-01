@@ -1,0 +1,16 @@
+bbox_xyxy,category_key,category_key_by_name,cls_id,cls_name,confidence,debug.brown_ratio,debug.cls_conf,debug.cls_id,debug.det_conf,debug.detections,debug.ensemble_conf,debug.green_ratio,debug.quality_score,debug.refined,debug.spot_count,debug.yellow_ratio,file,label_en,label_vi,quality_score,spot_count,status_vi
+"7,127,393,341",overripe,overripe,0,overripe,1.0000,0.022791,0.999953,0.000000,0.912808,1.000000,0.999953,0.002344,0.532999,,70.000000,0.988010,1.jpg,Overripe,Quá Chín,0.5330,70,Cần bán/Ăn ngay | Số quả: 1
+,none,,,,0.0000,,,,,0.000000,,,,,,,10.jpg,No banana detected,Không phát hiện chuối,0.0000,0,—
+,none,,,,0.0000,,,,,0.000000,,,,,,,11.jpg,No banana detected,Không phát hiện chuối,0.0000,0,—
+,none,,,,0.0000,,,,,0.000000,,,,,,,12.jpg,No banana detected,Không phát hiện chuối,0.0000,0,—
+"122,331,939,801",export,export,1,ripe,0.9597,0.007399,0.959653,1.000000,0.524015,1.000000,0.959653,0.929401,0.452494,,177.000000,0.095413,13.jpg,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4525,177,Bảo quản & Ship hàng | Số quả: 1
+"121,199,974,963",export,export,1,ripe,0.9993,0.000750,0.999349,1.000000,0.364982,6.000000,0.999349,0.882466,0.444739,,350.000000,0.135538,14.jpg,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4447,350,Bảo quản & Ship hàng | Số quả: 6
+"509,576,818,871",defective,export,1,ripe,0.8559,0.073792,0.711728,1.000000,0.290983,6.000000,0.855864,0.183613,0.484171,1.000000,85.000000,0.819369,15.jpg,Defective,Bị bệnh/Hỏng,0.4842,85,Loại bỏ | Số quả: 6
+"0,67,412,266",overripe,overripe,0,overripe,1.0000,0.031023,0.999999,0.000000,0.358286,1.000000,0.999999,0.000195,0.524300,,82.000000,0.989471,2.jpg,Overripe,Quá Chín,0.5243,82,Cần bán/Ăn ngay | Số quả: 1
+"12,120,405,321",overripe,overripe,0,overripe,1.0000,0.030357,1.000000,0.000000,0.787633,1.000000,1.000000,0.000670,0.526891,,60.000000,0.985659,3.jpg,Overripe,Quá Chín,0.5269,60,Cần bán/Ăn ngay | Số quả: 1
+"9,134,389,228",export,export,1,ripe,1.0000,0.029948,0.999981,1.000000,0.370466,1.000000,0.999981,0.053403,0.454369,,55.000000,0.914346,4.jpg,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4544,55,Bảo quản & Ship hàng | Số quả: 1
+"63,125,377,397",export,export,1,ripe,1.0000,0.000000,1.000000,1.000000,0.799290,1.000000,1.000000,0.798561,0.420108,,63.000000,0.000000,5.jpg,Just Ripe / Export,Chín Vừa/Xuất Khẩu,0.4201,63,Bảo quản & Ship hàng | Số quả: 1
+"0,261,375,361",defective,defective,2,rotten,0.9969,0.039238,0.996906,2.000000,0.274386,3.000000,0.996906,0.118615,0.480124,,31.000000,0.863231,6.jpg,Defective,Bị bệnh/Hỏng,0.4801,31,Loại bỏ | Số quả: 3
+"4,75,355,291",defective,defective,2,rotten,0.9996,0.043010,0.999638,2.000000,0.515658,1.000000,0.999638,0.000000,0.492330,,89.000000,0.992224,7.jpg,Defective,Bị bệnh/Hỏng,0.4923,89,Loại bỏ | Số quả: 1
+"88,0,327,397",defective,defective,2,rotten,0.9462,0.016050,0.946229,2.000000,0.822160,1.000000,0.946229,0.000000,0.502616,,147.000000,0.983788,8.jpg,Defective,Bị bệnh/Hỏng,0.5026,147,Loại bỏ | Số quả: 1
+,none,,,,0.0000,,,,,0.000000,,,,,,,9.jpg,No banana detected,Không phát hiện chuối,0.0000,0,—

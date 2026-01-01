@@ -1,0 +1,11 @@
+Counts by category_key (frame-level overall):
+- defective: 4
+- export: 4
+- none: 4
+- overripe: 3
+
+Counts by category_key (instance-level):
+- defective: 4
+- export: 7
+- overripe: 3
+- unripe: 9

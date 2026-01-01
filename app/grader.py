@@ -45,6 +45,18 @@ class GradeResult:
     refined: bool = False  # True if refined by feature analysis
 
 
+@dataclass(frozen=True)
+class FrameGrade:
+    """Result for a whole frame.
+
+    - items: per-banana results (multi-bbox)
+    - overall: a single summary result for the UI panel / backward compat
+    """
+
+    overall: GradeResult
+    items: List[GradeResult]
+
+
 class BananaGrader:
     """YOLOv8-based banana grading using a 2-stage pipeline.
 
@@ -94,6 +106,43 @@ class BananaGrader:
         self.device = self._pick_device(device if device is not None else (env_device or "auto"))
         self.conf = conf
         self.iou = iou
+
+        # How many bananas to analyze per frame when multi-detecting.
+        # Keep small to preserve real-time performance on CPU.
+        try:
+            self.max_fruits = max(1, int(env.get("BANANA_MAX_FRUITS", "6")))
+        except Exception:
+            self.max_fruits = 6
+
+        # Inference performance knobs (safe defaults).
+        # - imgsz: smaller = faster but may reduce detection accuracy.
+        # - half: GPU-only optimization.
+        try:
+            self.det_imgsz = max(128, int(env.get("BANANA_DET_IMGSZ", "640")))
+        except Exception:
+            self.det_imgsz = 640
+        try:
+            self.cls_imgsz = max(128, int(env.get("BANANA_CLS_IMGSZ", "416")))
+        except Exception:
+            self.cls_imgsz = 416
+
+        self.half = (env.get("BANANA_HALF", "").strip().lower() in {"1", "true", "yes", "y"})
+
+        # Analyzer throttling (to keep UI smooth on CPU).
+        # - all: run analyzer on every crop
+        # - defective: only when predicted defective
+        # - uncertain: only when cls confidence < BANANA_ANALYZE_UNCERTAIN_THRESH
+        # - defective_or_uncertain: union of the above
+        self.analyze_policy = (env.get("BANANA_ANALYZE_POLICY", "all").strip().lower() or "all")
+        try:
+            self.analyze_uncertain_thresh = float(env.get("BANANA_ANALYZE_UNCERTAIN_THRESH", "0"))
+        except Exception:
+            self.analyze_uncertain_thresh = 0.0
+        try:
+            self.analyze_every = max(1, int(env.get("BANANA_ANALYZE_EVERY", "1")))
+        except Exception:
+            self.analyze_every = 1
+        self._frame_index = 0
 
         # IMPORTANT:
         # - If you already know your dataset's class order, you can hardcode it here.
@@ -292,6 +341,35 @@ class BananaGrader:
                 self._detector = YOLO(self.detector_model_path)
                 self._haar = None
             self._classifier = YOLO(self.model_path)
+
+            # Speed up inference: fuse Conv+BN layers when supported.
+            try:
+                if self._detector is not None:
+                    self._detector.fuse()
+            except Exception:
+                pass
+            try:
+                if self._classifier is not None:
+                    self._classifier.fuse()
+            except Exception:
+                pass
+
+            # CPU thread tuning (often helps smoothness on weaker CPUs).
+            try:
+                if str(self.device).lower() == "cpu":
+                    import torch
+                    req = os.environ.get("BANANA_TORCH_THREADS", "").strip()
+                    if req:
+                        n = max(1, int(req))
+                    else:
+                        n = max(1, min(4, int(os.cpu_count() or 4)))
+                    torch.set_num_threads(n)
+                    try:
+                        torch.set_num_interop_threads(1)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         except Exception as e:
             self._detector = None
             self._classifier = None
@@ -351,156 +429,89 @@ class BananaGrader:
                 best = (int(x), int(y), int(x + w), int(y + h))
         return best
 
-    def grade(self, frame_bgr: np.ndarray) -> GradeResult:
-        if (self.detector_backend == "haar" and self._haar is None) or self._classifier is None:
-            msg = self._load_error or "Model chưa sẵn sàng."
+    def _haar_detect_bboxes(self, frame_bgr: np.ndarray) -> List[Tuple[int, int, int, int]]:
+        if self._haar is None or cv2 is None:
+            return []
+        try:
+            gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        except Exception:
+            return []
+
+        try:
+            rects = self._haar.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(40, 40),
+                flags=getattr(cv2, "CASCADE_SCALE_IMAGE", 0),
+            )
+        except Exception:
+            return []
+
+        if rects is None or len(rects) == 0:
+            return []
+
+        # Sort by area (desc) and take top-N.
+        candidates: List[Tuple[int, int, int, int, int]] = []
+        for (x, y, w, h) in rects:
+            area = int(w) * int(h)
+            candidates.append((area, int(x), int(y), int(x + w), int(y + h)))
+        candidates.sort(key=lambda t: t[0], reverse=True)
+        return [(x1, y1, x2, y2) for _, x1, y1, x2, y2 in candidates[: self.max_fruits]]
+
+    @staticmethod
+    def _severity_rank(category_key: str) -> int:
+        # Higher = more severe (used for overall aggregation)
+        if category_key == "defective":
+            return 4
+        if category_key == "overripe":
+            return 3
+        if category_key == "export":
+            return 2
+        if category_key == "unripe":
+            return 1
+        return 0
+
+    def _aggregate_overall(self, items: List[GradeResult]) -> GradeResult:
+        if not items:
             return GradeResult(
                 category_key="none",
-                label_vi="Chưa có model YOLO (best.pt)",
-                label_en="Missing YOLO model (best.pt)",
-                status_vi=msg,
+                label_vi="Không phát hiện chuối",
+                label_en="No banana detected",
+                status_vi="—",
                 confidence=0.0,
                 bbox_xyxy=None,
-                debug={"error": 1.0},
+                debug={"detections": 0.0},
             )
 
-        if self.detector_backend != "haar" and self._detector is None:
-            msg = self._load_error or "Model chưa sẵn sàng."
-            return GradeResult(
-                category_key="none",
-                label_vi="Chưa có model YOLO (best.pt)",
-                label_en="Missing YOLO model (best.pt)",
-                status_vi=msg,
-                confidence=0.0,
-                bbox_xyxy=None,
-                debug={"error": 1.0},
-            )
+        # Pick the single most severe result; tie-break by confidence.
+        best = max(items, key=lambda r: (self._severity_rank(r.category_key), float(r.confidence)))
 
-        # 1) Detect banana bbox
-        best_det_conf = -1.0
-        if self.detector_backend == "haar":
-            bbox = self._haar_detect_bbox(frame_bgr)
-            if bbox is None:
-                held = self._try_use_held_bbox(frame_bgr)
-                if held is not None:
-                    x1, y1, x2, y2 = held
-                    best_det_conf = 0.01
-                else:
-                    return GradeResult(
-                        category_key="none",
-                        label_vi="Không phát hiện chuối",
-                        label_en="No banana detected",
-                        status_vi="—",
-                        confidence=0.0,
-                        bbox_xyxy=None,
-                        debug={"detections": 0.0},
-                    )
-            x1, y1, x2, y2 = bbox
-            best_det_conf = 1.0  # Haar Cascade doesn't provide a real confidence
-            self._update_last_bbox((x1, y1, x2, y2))
-        else:
-            banana_id = self._find_banana_class_id()
-            if banana_id is None:
-                return GradeResult(
-                    category_key="none",
-                    label_vi="Detector không có class banana",
-                    label_en="Detector missing banana class",
-                    status_vi="Hãy dùng detector COCO (yolov8n.pt) hoặc model có class 'banana'",
-                    confidence=0.0,
-                    bbox_xyxy=None,
-                    debug={"error": 1.0},
-                )
+        # Annotate summary with count (keeps UI minimal: reuse existing status line)
+        debug = dict(best.debug or {})
+        debug["detections"] = float(len(items))
+        return GradeResult(
+            category_key=best.category_key,
+            label_vi=best.label_vi,
+            label_en=best.label_en,
+            status_vi=f"{best.status_vi} | Số quả: {len(items)}",
+            confidence=best.confidence,
+            bbox_xyxy=best.bbox_xyxy,
+            debug=debug,
+            quality_score=best.quality_score,
+            color_features=best.color_features,
+            spot_count=best.spot_count,
+            refined=best.refined,
+        )
 
-            try:
-                det = self._detector.predict(
-                    source=frame_bgr,
-                    verbose=False,
-                    conf=max(0.15, self.conf),
-                    iou=self.iou,
-                    device=self.device,
-                )
-            except Exception as e:
-                return GradeResult(
-                    category_key="none",
-                    label_vi="Lỗi detect",
-                    label_en="Detection error",
-                    status_vi=str(e),
-                    confidence=0.0,
-                    bbox_xyxy=None,
-                    debug={"error": 1.0},
-                )
-
-            if not det:
-                held = self._try_use_held_bbox(frame_bgr)
-                if held is not None:
-                    x1, y1, x2, y2 = held
-                    best_det_conf = 0.01
-                else:
-                    return GradeResult(
-                        category_key="none",
-                        label_vi="Không phát hiện chuối",
-                        label_en="No banana detected",
-                        status_vi="—",
-                        confidence=0.0,
-                        bbox_xyxy=None,
-                        debug={"detections": 0.0},
-                    )
-
-            boxes = getattr(det[0], "boxes", None)
-            if boxes is None or len(boxes) == 0:
-                held = self._try_use_held_bbox(frame_bgr)
-                if held is not None:
-                    x1, y1, x2, y2 = held
-                    best_det_conf = 0.01
-                else:
-                    return GradeResult(
-                        category_key="none",
-                        label_vi="Không phát hiện chuối",
-                        label_en="No banana detected",
-                        status_vi="—",
-                        confidence=0.0,
-                        bbox_xyxy=None,
-                        debug={"detections": 0.0},
-                    )
-
-            best_box = None
-            best_det_conf = -1.0
-            for b in boxes:
-                try:
-                    cls_id = int(b.cls.item())
-                    conf = float(b.conf.item())
-                except Exception:
-                    cls_id = int(b.cls)
-                    conf = float(b.conf)
-                if cls_id != banana_id:
-                    continue
-                if conf > best_det_conf:
-                    best_det_conf = conf
-                    best_box = b
-
-            if best_box is None:
-                held = self._try_use_held_bbox(frame_bgr)
-                if held is not None:
-                    x1, y1, x2, y2 = held
-                    best_det_conf = 0.01
-                else:
-                    return GradeResult(
-                        category_key="none",
-                        label_vi="Không phát hiện chuối",
-                        label_en="No banana detected",
-                        status_vi="—",
-                        confidence=0.0,
-                        bbox_xyxy=None,
-                        debug={"detections": float(len(boxes))},
-                    )
-
-            if best_box is not None:
-                xyxy = best_box.xyxy
-                try:
-                    x1, y1, x2, y2 = [int(v) for v in xyxy[0].tolist()]
-                except Exception:
-                    x1, y1, x2, y2 = [int(v) for v in xyxy]
-                self._update_last_bbox((x1, y1, x2, y2))
+    def _grade_bbox(
+        self,
+        frame_bgr: np.ndarray,
+        bbox_xyxy: Tuple[int, int, int, int],
+        det_conf: float,
+        bbox_held: bool,
+    ) -> GradeResult:
+        x1, y1, x2, y2 = bbox_xyxy
 
         h, w = frame_bgr.shape[:2]
         x1, y1 = max(0, x1), max(0, y1)
@@ -520,7 +531,13 @@ class BananaGrader:
 
         # 2) Classify crop
         try:
-            cls_res = self._classifier.predict(source=crop, verbose=False, device=self.device)
+            cls_res = self._classifier.predict(
+                source=crop,
+                verbose=False,
+                device=self.device,
+                imgsz=int(self.cls_imgsz),
+                half=bool(self.half),
+            )
         except Exception as e:
             return GradeResult(
                 category_key="none",
@@ -529,7 +546,7 @@ class BananaGrader:
                 status_vi=str(e),
                 confidence=0.0,
                 bbox_xyxy=(x1, y1, x2, y2),
-                debug={"det_conf": float(best_det_conf)},
+                debug={"det_conf": float(det_conf)},
             )
 
         if not cls_res:
@@ -540,7 +557,7 @@ class BananaGrader:
                 status_vi="—",
                 confidence=0.0,
                 bbox_xyxy=(x1, y1, x2, y2),
-                debug={"det_conf": float(best_det_conf)},
+                debug={"det_conf": float(det_conf)},
             )
 
         r0 = cls_res[0]
@@ -553,57 +570,72 @@ class BananaGrader:
                 status_vi="—",
                 confidence=0.0,
                 bbox_xyxy=(x1, y1, x2, y2),
-                debug={"det_conf": float(best_det_conf)},
+                debug={"det_conf": float(det_conf)},
             )
 
         try:
             top1 = int(probs.top1)
             top1_conf = float(probs.top1conf)
         except Exception:
-            # Fallback
             top1 = int(getattr(probs, "top1", 0))
             top1_conf = float(getattr(probs, "top1conf", 0.0))
 
         class_names = getattr(self._classifier, "names", {})
         pred_name = str(class_names.get(top1, str(top1)))
 
-        # Map predicted class name -> category
         inferred = self._infer_category_from_class_name(pred_name)
         category_key = inferred or self.class_id_to_category_key.get(top1) or "export"
 
         label_vi, label_en, status_vi = self._category_info[category_key]
         confidence = float(min(1.0, max(0.0, top1_conf)))
 
-        debug = {
-            "det_conf": float(best_det_conf),
+        debug: Dict[str, float] = {
+            "det_conf": float(det_conf),
             "cls_conf": float(confidence),
             "cls_id": float(top1),
         }
 
-        if best_det_conf <= 0.02:
+        if bbox_held:
             debug["bbox_held"] = 1.0
 
         # ============================================================
-        # Enhanced Analysis (Based on Research Paper Methodology)
+        # Enhanced Analysis
         # ============================================================
         quality_score = 0.0
         color_features = None
         spot_count = 0
         refined = False
-        
+
+        should_analyze = False
         if self._analyzer is not None and self.enable_enhanced_analysis:
+            # Frame-based throttling
+            if self.analyze_every <= 1 or (self._frame_index % self.analyze_every) == 0:
+                should_analyze = True
+
+            # Policy-based gating
+            pol = self.analyze_policy
+            if pol == "never":
+                should_analyze = False
+            elif pol == "all":
+                pass
+            elif pol == "defective":
+                should_analyze = (category_key == "defective")
+            elif pol == "uncertain":
+                should_analyze = (float(confidence) < float(self.analyze_uncertain_thresh))
+            elif pol == "defective_or_uncertain":
+                should_analyze = (category_key == "defective") or (float(confidence) < float(self.analyze_uncertain_thresh))
+
+        if should_analyze:
             try:
-                # Preprocess frame for better analysis
                 if self.enable_preprocessing:
                     processed_crop = self._analyzer.preprocess_frame(
                         crop, enhance_contrast=True, denoise=True
                     )
                 else:
                     processed_crop = crop
-                
-                # Extract features from banana region
+
                 features = self._analyzer.analyze(processed_crop)
-                
+
                 quality_score = features.quality_score
                 spot_count = features.spot_count
                 color_features = {
@@ -614,45 +646,173 @@ class BananaGrader:
                     "solidity": features.solidity,
                     "texture_variance": features.texture_variance,
                 }
-                
-                # Add feature info to debug
-                debug["quality_score"] = quality_score
-                debug["yellow_ratio"] = features.yellow_ratio
-                debug["green_ratio"] = features.green_ratio
-                debug["brown_ratio"] = features.brown_ratio
+
+                debug["quality_score"] = float(quality_score)
+                debug["yellow_ratio"] = float(features.yellow_ratio)
+                debug["green_ratio"] = float(features.green_ratio)
+                debug["brown_ratio"] = float(features.brown_ratio)
                 debug["spot_count"] = float(spot_count)
-                
-                # Refine category using feature analysis (ensemble approach)
+
                 if self.enable_feature_refinement:
                     refined_category, refined_conf = self._analyzer.refine_category_with_features(
                         category_key, features, confidence
                     )
-                    
+
                     if refined_category != category_key:
                         category_key = refined_category
                         label_vi, label_en, status_vi = self._category_info[category_key]
                         refined = True
                         debug["refined"] = 1.0
-                        debug["original_category"] = debug.get("cls_id", 0.0)
-                    
-                    # Use ensemble confidence
-                    confidence = refined_conf
-                    debug["ensemble_conf"] = refined_conf
-                    
+
+                    confidence = float(refined_conf)
+                    debug["ensemble_conf"] = float(refined_conf)
+
             except Exception as e:
                 debug["analyzer_error"] = 1.0
-                debug["analyzer_error_msg"] = str(e)[:50]
+                debug["analyzer_error_msg"] = 1.0
 
         return GradeResult(
             category_key=category_key,
             label_vi=label_vi,
             label_en=label_en,
             status_vi=status_vi,
-            confidence=confidence,
+            confidence=float(confidence),
             bbox_xyxy=(x1, y1, x2, y2),
             debug=debug,
-            quality_score=quality_score,
+            quality_score=float(quality_score),
             color_features=color_features,
-            spot_count=spot_count,
-            refined=refined,
+            spot_count=int(spot_count),
+            refined=bool(refined),
         )
+
+    def grade_frame(self, frame_bgr: np.ndarray) -> FrameGrade:
+        """Grade a frame and return per-banana results + an overall summary."""
+
+        # Used by analyzer throttling.
+        self._frame_index += 1
+
+        if (self.detector_backend == "haar" and self._haar is None) or self._classifier is None:
+            msg = self._load_error or "Model chưa sẵn sàng."
+            overall = GradeResult(
+                category_key="none",
+                label_vi="Chưa có model YOLO (best.pt)",
+                label_en="Missing YOLO model (best.pt)",
+                status_vi=msg,
+                confidence=0.0,
+                bbox_xyxy=None,
+                debug={"error": 1.0},
+            )
+            return FrameGrade(overall=overall, items=[])
+
+        if self.detector_backend != "haar" and self._detector is None:
+            msg = self._load_error or "Model chưa sẵn sàng."
+            overall = GradeResult(
+                category_key="none",
+                label_vi="Chưa có model YOLO (best.pt)",
+                label_en="Missing YOLO model (best.pt)",
+                status_vi=msg,
+                confidence=0.0,
+                bbox_xyxy=None,
+                debug={"error": 1.0},
+            )
+            return FrameGrade(overall=overall, items=[])
+
+        detections: List[Tuple[Tuple[int, int, int, int], float, bool]] = []
+
+        if self.detector_backend == "haar":
+            bboxes = self._haar_detect_bboxes(frame_bgr)
+            if not bboxes:
+                held = self._try_use_held_bbox(frame_bgr)
+                if held is not None:
+                    detections = [(held, 0.01, True)]
+                else:
+                    return FrameGrade(overall=self._aggregate_overall([]), items=[])
+            else:
+                # Haar has no confidence; treat as 1.0 and update hold bbox from the largest.
+                self._update_last_bbox(bboxes[0])
+                detections = [(bb, 1.0, False) for bb in bboxes]
+
+        else:
+            banana_id = self._find_banana_class_id()
+            if banana_id is None:
+                overall = GradeResult(
+                    category_key="none",
+                    label_vi="Detector không có class banana",
+                    label_en="Detector missing banana class",
+                    status_vi="Hãy dùng detector COCO (yolov8n.pt) hoặc model có class 'banana'",
+                    confidence=0.0,
+                    bbox_xyxy=None,
+                    debug={"error": 1.0},
+                )
+                return FrameGrade(overall=overall, items=[])
+
+            try:
+                det = self._detector.predict(
+                    source=frame_bgr,
+                    verbose=False,
+                    conf=max(0.15, self.conf),
+                    iou=self.iou,
+                    device=self.device,
+                    imgsz=int(self.det_imgsz),
+                    classes=[int(banana_id)],
+                    half=bool(self.half),
+                )
+            except Exception as e:
+                overall = GradeResult(
+                    category_key="none",
+                    label_vi="Lỗi detect",
+                    label_en="Detection error",
+                    status_vi=str(e),
+                    confidence=0.0,
+                    bbox_xyxy=None,
+                    debug={"error": 1.0},
+                )
+                return FrameGrade(overall=overall, items=[])
+
+            boxes = getattr(det[0], "boxes", None) if det else None
+            if boxes is None or len(boxes) == 0:
+                held = self._try_use_held_bbox(frame_bgr)
+                if held is not None:
+                    detections = [(held, 0.01, True)]
+                else:
+                    return FrameGrade(overall=self._aggregate_overall([]), items=[])
+            else:
+                candidates: List[Tuple[float, Tuple[int, int, int, int]]] = []
+                for b in boxes:
+                    try:
+                        cls_id = int(b.cls.item())
+                        conf = float(b.conf.item())
+                    except Exception:
+                        cls_id = int(b.cls)
+                        conf = float(b.conf)
+                    if cls_id != banana_id:
+                        continue
+                    xyxy = b.xyxy
+                    try:
+                        x1, y1, x2, y2 = [int(v) for v in xyxy[0].tolist()]
+                    except Exception:
+                        x1, y1, x2, y2 = [int(v) for v in xyxy]
+                    candidates.append((conf, (x1, y1, x2, y2)))
+
+                candidates.sort(key=lambda t: t[0], reverse=True)
+                if not candidates:
+                    held = self._try_use_held_bbox(frame_bgr)
+                    if held is not None:
+                        detections = [(held, 0.01, True)]
+                    else:
+                        return FrameGrade(overall=self._aggregate_overall([]), items=[])
+                else:
+                    # Update bbox-hold with the top detection.
+                    self._update_last_bbox(candidates[0][1])
+                    detections = [(bb, float(conf), False) for conf, bb in candidates[: self.max_fruits]]
+
+        items: List[GradeResult] = []
+        for bbox, det_conf, held in detections:
+            items.append(self._grade_bbox(frame_bgr, bbox, det_conf=det_conf, bbox_held=held))
+
+        overall = self._aggregate_overall(items)
+        return FrameGrade(overall=overall, items=items)
+
+    def grade(self, frame_bgr: np.ndarray) -> GradeResult:
+        # Backward-compatible single-result API.
+        return self.grade_frame(frame_bgr).overall
