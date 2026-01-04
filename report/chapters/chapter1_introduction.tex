@@ -1,0 +1,103 @@
+% ==============================================================================
+% CHƯƠNG 1: GIỚI THIỆU
+% ==============================================================================
+
+\chapter{GIỚI THIỆU}
+\label{chap:introduction}
+
+\section{Đặt vấn đề}
+
+Trong bối cảnh nền nông nghiệp hiện đại đang chuyển mình mạnh mẽ theo hướng công nghệ hóa và tự động hóa, việc ứng dụng trí tuệ nhân tạo (\textit{Artificial Intelligence}) và thị giác máy tính (\textit{Computer Vision}) vào các quy trình sản xuất và kiểm định chất lượng nông sản đã trở thành một xu thế tất yếu. Không chỉ đơn thuần là câu chuyện về hiệu suất kinh tế, đây còn là vấn đề mang tính triết học sâu xa: liệu máy móc có thể ``nhìn'' và ``hiểu'' thế giới tự nhiên theo cách mà con người vẫn làm?
+
+Chuối (\textit{Musa spp.}) là một trong những loại trái cây được tiêu thụ rộng rãi nhất trên thế giới, đóng vai trò quan trọng trong chuỗi cung ứng thực phẩm toàn cầu. Tại Việt Nam, với sản lượng hàng triệu tấn mỗi năm, ngành công nghiệp chuối đang đối mặt với thách thức lớn trong việc phân loại và kiểm soát chất lượng. Phương pháp truyền thống dựa vào kinh nghiệm và thị giác của con người không chỉ tốn kém về nhân lực mà còn thiếu tính nhất quán, dẫn đến những sai sót đáng kể trong khâu phân loại.
+
+Từ góc nhìn của một nhà nghiên cứu học máy lý thuyết, bài toán phân loại chất lượng chuối không đơn thuần là một ứng dụng công nghệ --- mà còn là cơ hội để khám phá ranh giới giữa nhận thức của con người và khả năng học tập của máy. Câu hỏi then chốt không chỉ là ``làm sao để máy phân loại chính xác'' mà còn là ``tại sao mô hình học được những đặc trưng này''.
+
+\textbf{Bối cảnh dữ liệu:} Một trong những thách thức thực tế của bài toán là việc thiếu các dataset công khai chất lượng cao về độ chín chuối. May mắn thay, tập dữ liệu \textbf{Banana Classification Dataset} trên Kaggle \cite{kaggle_banana_classification} đã cung cấp một nguồn dữ liệu đáng tin cậy với $\sim$13,500 ảnh được phân loại vào 4 class (unripe, ripe, overripe, rotten), cùng với giấy phép MIT cho phép sử dụng học thuật và thương mại.
+
+\section{Mục tiêu nghiên cứu}
+
+Đề tài này hướng đến các mục tiêu cụ thể sau:
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+    \item \textbf{Xây dựng hệ thống phân loại chất lượng chuối theo thời gian thực}: Sử dụng kiến trúc 2 giai đoạn (two-stage pipeline) kết hợp \gls{yolo} detector và classifier để phát hiện và phân loại độ chín của chuối từ luồng video webcam.
+    
+    \item \textbf{Phát triển module phân tích hình ảnh nâng cao}: Dựa trên các nghiên cứu khoa học về xử lý ảnh, triển khai các kỹ thuật trích xuất đặc trưng màu sắc (HSV/LAB), hình thái học và kết cấu bề mặt để tăng cường độ tin cậy của kết quả phân loại.
+    
+    \item \textbf{Phân loại theo 4 cấp độ hành động}: Chia chuối thành 4 nhóm phục vụ mục đích thương mại:
+    \begin{itemize}
+        \item \textit{Unripe} (Xanh): Chưa thu hoạch
+        \item \textit{Export} (Chín vừa): Phù hợp xuất khẩu
+        \item \textit{Overripe} (Quá chín): Cần bán gấp hoặc tiêu thụ ngay
+        \item \textit{Defective} (Hỏng/Bệnh): Cần loại bỏ
+    \end{itemize}
+    
+    \item \textbf{Thiết kế giao diện người dùng thân thiện}: Xây dựng \gls{ui} bằng CustomTkinter với hỗ trợ tiếng Việt đầy đủ, hiển thị trực quan các kết quả phân loại và điểm chất lượng.
+    
+    \item \textbf{Đánh giá hiệu năng và độ chính xác}: Thực hiện các thí nghiệm để đo lường độ chính xác phân loại, tốc độ xử lý và khả năng ứng dụng thực tế của hệ thống.
+\end{enumerate}
+
+\section{Phạm vi nghiên cứu}
+
+\subsection{Phạm vi về đối tượng}
+\begin{itemize}
+    \item Đối tượng chính: Quả chuối tiêu (Cavendish) --- giống chuối phổ biến nhất trong thương mại quốc tế.
+    \item Trạng thái: Chuối đơn lẻ hoặc trong nải (nhiều quả trong cùng khung hình).
+    \item Điều kiện chụp: Cầm chuối trên tay, ánh sáng vừa đủ (trong nhà hoặc ngoài trời râm).
+\end{itemize}
+
+\subsection{Phạm vi về kỹ thuật}
+\begin{itemize}
+    \item Sử dụng mô hình YOLOv8 (Ultralytics) cho cả detection và classification.
+    \item Huấn luyện trên tập dữ liệu công khai từ Kaggle (Banana Ripeness Classification Dataset).
+    \item Chạy inference trên CPU hoặc GPU (CUDA).
+    \item Không sử dụng các dịch vụ API trả phí --- chỉ dùng pretrained weights open-source để fine-tune.
+\end{itemize}
+
+\section{Ý nghĩa khoa học và thực tiễn}
+
+\subsection{Ý nghĩa khoa học}
+Nghiên cứu này đóng góp vào lĩnh vực thị giác máy tính ứng dụng trong nông nghiệp thông qua:
+
+\begin{itemize}
+    \item Khảo sát và so sánh hiệu quả của kiến trúc 2 giai đoạn (detector + classifier) so với phương pháp end-to-end trong bài toán phân loại nông sản.
+    
+    \item Đề xuất phương pháp kết hợp deep learning với các kỹ thuật xử lý ảnh cổ điển (phân tích màu HSV, phát hiện đốm, đo texture) để tăng cường độ tin cậy cho trường hợp edge-case.
+    
+    \item Phân tích mối quan hệ giữa các đặc trưng thị giác (màu sắc, hình thái, kết cấu) với độ chín sinh học của chuối --- một bước tiến gần hơn đến việc hiểu ``tại sao'' mô hình đưa ra quyết định.
+\end{itemize}
+
+\subsection{Ý nghĩa thực tiễn}
+Về mặt ứng dụng, hệ thống có thể được triển khai trong:
+
+\begin{itemize}
+    \item \textbf{Nhà kho/trạm phân loại}: Hỗ trợ công nhân kiểm tra nhanh chất lượng, giảm tải công việc thủ công.
+    
+    \item \textbf{Xuất khẩu nông sản}: Đảm bảo chỉ chuối đạt tiêu chuẩn ``export'' được đóng gói.
+    
+    \item \textbf{Siêu thị/cửa hàng}: Kiểm tra độ tươi của hàng hóa trưng bày.
+    
+    \item \textbf{Nông dân}: Ứng dụng di động (sau khi export TFLite) để đánh giá thu hoạch tại vườn.
+\end{itemize}
+
+\section{Cấu trúc báo cáo}
+
+Báo cáo được tổ chức thành 6 chương với nội dung như sau:
+
+\begin{itemize}
+    \item \textbf{Chương 1 --- Giới thiệu}: Trình bày bối cảnh, mục tiêu, phạm vi và ý nghĩa của đề tài.
+    
+    \item \textbf{Chương 2 --- Cơ sở lý thuyết}: Khái quát các kiến thức nền tảng về thị giác máy tính, mạng nơ-ron tích chập, kiến trúc YOLO và các không gian màu.
+    
+    \item \textbf{Chương 3 --- Phương pháp thực hiện}: Mô tả chi tiết kiến trúc hệ thống 2-stage, module BananaAnalyzer và các kỹ thuật refinement.
+    
+    \item \textbf{Chương 4 --- Cài đặt và triển khai}: Trình bày quá trình thu thập dữ liệu, huấn luyện mô hình và phát triển giao diện.
+    
+    \item \textbf{Chương 5 --- Kết quả và đánh giá}: Phân tích kết quả theo 2 giai đoạn: (1) model ``thô'' trên validation set, (2) pipeline hoàn chỉnh trên dữ liệu thực tế.
+    
+    \item \textbf{Chương 6 --- Kết luận}: Tổng kết công việc, bài học kinh nghiệm và đề xuất hướng phát triển.
+\end{itemize}
+
+\textbf{Dòng chảy tư duy:} Mỗi chương được thiết kế để trả lời một câu hỏi cụ thể: \textit{Tại sao làm?} (Ch.1) $\rightarrow$ \textit{Dựa trên cơ sở gì?} (Ch.2) $\rightarrow$ \textit{Thiết kế như thế nào?} (Ch.3) $\rightarrow$ \textit{Triển khai ra sao?} (Ch.4) $\rightarrow$ \textit{Kết quả thế nào?} (Ch.5) $\rightarrow$ \textit{Rút ra điều gì?} (Ch.6).
+
+\clearpage

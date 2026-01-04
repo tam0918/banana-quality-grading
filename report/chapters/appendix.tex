@@ -1,0 +1,326 @@
+% ==============================================================================
+% PHỤ LỤC
+% ==============================================================================
+
+\appendix
+
+\chapter{PHÂN CÔNG CÔNG VIỆC}
+\label{app:task_assignment}
+
+\section{Bảng phân công chi tiết}
+
+\begin{table}[H]
+\centering
+\caption{Phân công công việc giữa các thành viên}
+\label{tab:task_assignment}
+\begin{tabular}{@{}clcl@{}}
+\toprule
+\textbf{STT} & \textbf{Công việc} & \textbf{Người thực hiện} & \textbf{Tỉ lệ} \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Nghiên cứu \& Thiết kế}} \\
+\midrule
+1 & Nghiên cứu lý thuyết YOLO & Lường Văn Tâm & 50\% \\
+  &                          & Khương Thanh Tín & 50\% \\
+\midrule
+2 & Khảo sát dataset & Khương Thanh Tín & 60\% \\
+  &                  & Lường Văn Tâm & 40\% \\
+\midrule
+3 & Thiết kế kiến trúc hệ thống & Lường Văn Tâm & 70\% \\
+  &                              & Khương Thanh Tín & 30\% \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Phát triển \& Cài đặt}} \\
+\midrule
+4 & Phát triển module BananaAnalyzer & Lường Văn Tâm & 80\% \\
+  &                                  & Khương Thanh Tín & 20\% \\
+\midrule
+5 & Phát triển module Grader & Lường Văn Tâm & 70\% \\
+  &                          & Khương Thanh Tín & 30\% \\
+\midrule
+6 & Phát triển giao diện UI & Khương Thanh Tín & 60\% \\
+  &                          & Lường Văn Tâm & 40\% \\
+\midrule
+7 & Viết script huấn luyện & Lường Văn Tâm & 60\% \\
+  &                        & Khương Thanh Tín & 40\% \\
+\midrule
+8 & Xử lý video \& threading & Lường Văn Tâm & 70\% \\
+  &                          & Khương Thanh Tín & 30\% \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Thử nghiệm \& Đánh giá}} \\
+\midrule
+9 & Huấn luyện \& fine-tune model & Khương Thanh Tín & 50\% \\
+  &                                & Lường Văn Tâm & 50\% \\
+\midrule
+10 & Viết test cases & Khương Thanh Tín & 60\% \\
+   &                 & Lường Văn Tâm & 40\% \\
+\midrule
+11 & Đánh giá \& phân tích kết quả & Lường Văn Tâm & 50\% \\
+   &                                & Khương Thanh Tín & 50\% \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Tài liệu \& Báo cáo}} \\
+\midrule
+12 & Viết báo cáo LaTeX & Lường Văn Tâm & 60\% \\
+   &                    & Khương Thanh Tín & 40\% \\
+\midrule
+13 & Viết README \& documentation & Khương Thanh Tín & 50\% \\
+   &                               & Lường Văn Tâm & 50\% \\
+\midrule
+14 & Chuẩn bị slide thuyết trình & Khương Thanh Tín & 50\% \\
+   &                              & Lường Văn Tâm & 50\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Tổng hợp đóng góp}
+
+\begin{table}[H]
+\centering
+\caption{Tổng hợp tỉ lệ đóng góp}
+\label{tab:contribution_summary}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Thành viên} & \textbf{MSV} & \textbf{Tỉ lệ đóng góp} \\
+\midrule
+Lường Văn Tâm & 22001349 & 55\% \\
+Khương Thanh Tín & 22001349 & 45\% \\
+\midrule
+\textbf{Tổng} & & \textbf{100\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\chapter{HƯỚNG DẪN CÀI ĐẶT VÀ SỬ DỤNG}
+\label{app:installation_guide}
+
+\section{Yêu cầu hệ thống}
+
+\begin{itemize}
+    \item \textbf{Hệ điều hành}: Windows 10/11, Linux (Ubuntu 20.04+), macOS 11+
+    \item \textbf{Python}: Phiên bản 3.9 trở lên
+    \item \textbf{RAM}: Tối thiểu 8GB, khuyến nghị 16GB
+    \item \textbf{GPU}: Không bắt buộc, nhưng khuyến nghị NVIDIA GPU với CUDA
+    \item \textbf{Webcam}: Độ phân giải tối thiểu 720p
+\end{itemize}
+
+\section{Các bước cài đặt}
+
+\subsection{Bước 1: Clone repository}
+
+\begin{lstlisting}[language=bash]
+git clone https://github.com/tam0918/banana-quality-grading.git
+cd banana-quality-grading
+\end{lstlisting}
+
+\subsection{Bước 2: Tạo môi trường ảo}
+
+\begin{lstlisting}[language=bash]
+# Windows
+python -m venv .venv
+.\.venv\Scripts\activate
+
+# Linux/macOS
+python3 -m venv .venv
+source .venv/bin/activate
+\end{lstlisting}
+
+\subsection{Bước 3: Cài đặt dependencies}
+
+\begin{lstlisting}[language=bash]
+pip install -r requirements.txt
+\end{lstlisting}
+
+\subsection{Bước 4: Chuẩn bị font tiếng Việt}
+
+\begin{lstlisting}[language=bash]
+# Copy font vao thu muc assets/fonts/
+# Hoac su dung font Windows co san
+# Neu khong co font, app se fallback sang tieng Anh
+\end{lstlisting}
+
+\subsection{Bước 5: Kiểm tra setup}
+
+\begin{lstlisting}[language=bash]
+python check_setup.py
+\end{lstlisting}
+
+\subsection{Bước 6: Chạy ứng dụng}
+
+\begin{lstlisting}[language=bash]
+python main.py
+\end{lstlisting}
+
+\section{Hướng dẫn huấn luyện model}
+
+\subsection{Huấn luyện classifier từ Kaggle dataset}
+
+\begin{lstlisting}[language=bash]
+# Cau hinh Kaggle API
+# Dat kaggle.json tai: %USERPROFILE%/.kaggle/kaggle.json
+
+# Chay script train
+python training_kaggle_classification.py --device auto --epochs 50
+\end{lstlisting}
+
+\subsection{Copy weights sau khi train}
+
+\begin{lstlisting}[language=bash]
+# Windows
+copy runs_banana\yolov8n_banana_cls\weights\best.pt weights\best.pt
+
+# Linux/macOS
+cp runs_banana/yolov8n_banana_cls/weights/best.pt weights/best.pt
+\end{lstlisting}
+
+\chapter{MÃ NGUỒN CHÍNH}
+\label{app:source_code}
+
+\section{File main.py}
+
+\begin{lstlisting}[caption={Nội dung file main.py (rút gọn)},label={lst:main_py}]
+from __future__ import annotations
+import os
+from app.ui_manager import UIConfig, UI_Manager
+from utils.resource_manager import ResourceManager
+
+DEFAULT_FONT_CANDIDATES = [
+    os.path.join("assets", "fonts", "Roboto-Regular.ttf"),
+    "C:/Windows/Fonts/segoeui.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+]
+
+DEFAULT_MODEL_CANDIDATES = [
+    "yolov8n_banana_cls3_best.pt",
+    os.path.join("weights", "best.pt"),
+    os.path.join("runs_banana", "yolov8n_banana", "weights", "best.pt"),
+]
+
+def pick_font_path() -> str:
+    for p in DEFAULT_FONT_CANDIDATES:
+        if os.path.exists(p):
+            return p
+    return DEFAULT_FONT_CANDIDATES[0]
+
+def pick_model_path() -> str:
+    for p in DEFAULT_MODEL_CANDIDATES:
+        if os.path.exists(p):
+            return p
+    return DEFAULT_MODEL_CANDIDATES[0]
+
+def main() -> None:
+    rm = ResourceManager()
+    # Auto-download resources if URLs provided
+    
+    ui = UI_Manager(
+        UIConfig(
+            font_path=pick_font_path(),
+            model_path=pick_model_path(),
+            detector_model_path=pick_detector_path(),
+            camera_index=0,
+        )
+    )
+    ui.run()
+
+if __name__ == "__main__":
+    main()
+\end{lstlisting}
+
+\section{Class BananaGrader (rút gọn)}
+
+\begin{lstlisting}[caption={Class BananaGrader chính},label={lst:grader_class}]
+class BananaGrader:
+    """YOLOv8-based banana grading using a 2-stage pipeline."""
+    
+    def __init__(self, model_path, detector_model_path="yolov8n.pt", ...):
+        self.model_path = model_path
+        self.detector_model_path = detector_model_path
+        
+        self.class_id_to_category_key = {
+            0: "unripe",
+            1: "export",
+            2: "overripe",
+            3: "defective",
+        }
+        
+        self._category_info = {
+            "unripe": ("Chuoi Xanh", "Unripe", "Chua thu hoach"),
+            "export": ("Chin Vua/Xuat Khau", "Just Ripe", "Bao quan & Ship"),
+            "overripe": ("Qua Chin", "Overripe", "Can ban/An ngay"),
+            "defective": ("Bi benh/Hong", "Defective", "Loai bo"),
+        }
+        
+        self._load_models()
+    
+    def grade_frame(self, frame_bgr) -> FrameGrade:
+        """Grade all bananas in a frame."""
+        # 1. Detect bananas
+        bboxes = self._detect_bananas(frame_bgr)
+        
+        # 2. Classify each bbox
+        items = []
+        for bbox in bboxes[:self.max_fruits]:
+            result = self._grade_bbox(frame_bgr, bbox)
+            items.append(result)
+        
+        # 3. Aggregate results
+        overall = self._aggregate_overall(items)
+        
+        return FrameGrade(overall=overall, items=items)
+\end{lstlisting}
+
+\chapter{KẾT QUẢ HUẤN LUYỆN CHI TIẾT}
+\label{app:training_results}
+
+\section{Training log từ YOLOv8}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\caption{Chi tiết kết quả huấn luyện 50 epoch}
+\label{tab:full_training_log}
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+\textbf{Epoch} & \textbf{Time (s)} & \textbf{Train Loss} & \textbf{Val Loss} & \textbf{Top-1} & \textbf{Top-5} & \textbf{LR} \\
+\midrule
+1 & 109.7 & 0.6867 & 0.1191 & 96.35\% & 100\% & 4.12e-4 \\
+5 & 458.4 & 0.0893 & 0.1118 & 96.79\% & 100\% & 1.15e-3 \\
+10 & 894.9 & 0.0537 & 0.0933 & 97.33\% & 100\% & 1.03e-3 \\
+15 & 1326.7 & 0.0408 & 0.0673 & 98.66\% & 100\% & 9.04e-4 \\
+20 & 1755.4 & 0.0326 & 0.0623 & 98.66\% & 100\% & 7.80e-4 \\
+25 & 2188.0 & 0.0280 & 0.0577 & 98.66\% & 100\% & 6.56e-4 \\
+30 & 2652.2 & 0.0218 & 0.1002 & 98.40\% & 100\% & 5.32e-4 \\
+35 & 3079.6 & 0.0176 & 0.0695 & 98.58\% & 100\% & 4.09e-4 \\
+40 & 3506.3 & 0.0173 & 0.0638 & 98.66\% & 100\% & 2.85e-4 \\
+45 & 3935.3 & 0.0116 & 0.0699 & 98.66\% & 100\% & 1.61e-4 \\
+50 & 4363.7 & 0.0096 & 0.0752 & 98.75\% & 100\% & 3.73e-5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Cấu hình huấn luyện (args.yaml)}
+
+\begin{lstlisting}[language=yaml,caption={Cấu hình huấn luyện từ args.yaml},label={lst:args_yaml}]
+task: classify
+mode: train
+model: yolov8n-cls.pt
+data: datasets\kaggle_banana_ripeness
+epochs: 50
+patience: 100
+batch: -1
+imgsz: 416
+save: true
+cache: false
+device: '0'
+workers: 0
+project: runs_banana
+name: yolov8n_banana_cls3
+pretrained: true
+optimizer: auto
+verbose: true
+seed: 0
+deterministic: true
+amp: true
+val: true
+split: val
+plots: true
+\end{lstlisting}
+
+\clearpage

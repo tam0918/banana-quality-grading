@@ -1,0 +1,639 @@
+% ==============================================================================
+% SLIDE BÁO CÁO: ỨNG DỤNG THỊ GIÁC MÁY TÍNH TRONG PHÂN LOẠI CHẤT LƯỢNG CHUỐI
+% ==============================================================================
+\documentclass[aspectratio=169,10pt]{beamer}
+
+% === PACKAGES ===
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{subcaption}
+\usepackage{fontawesome5}
+
+% === THEME ===
+\usetheme{Madrid}
+\usecolortheme{whale}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+% === COLORS ===
+\definecolor{bananaYellow}{RGB}{255, 225, 53}
+\definecolor{bananaGreen}{RGB}{138, 180, 71}
+\definecolor{bananaBrown}{RGB}{139, 90, 43}
+\definecolor{primaryBlue}{RGB}{0, 82, 147}
+
+\setbeamercolor{title}{fg=white,bg=primaryBlue}
+\setbeamercolor{frametitle}{fg=white,bg=primaryBlue}
+\setbeamercolor{block title}{fg=white,bg=primaryBlue}
+\setbeamercolor{structure}{fg=primaryBlue}
+
+% === TITLE INFO ===
+\title[Phân loại chất lượng Chuối]{Ứng dụng Thị giác Máy tính trong\\Phân loại Chất lượng Chuối}
+\subtitle{Banana Quality Grading using Computer Vision}
+\author{Sinh viên thực hiện}
+\institute{Trường Đại học}
+\date{Tháng 01/2026}
+
+% === LOGO ===
+% \logo{\includegraphics[height=0.8cm]{images/logo.png}}
+
+\begin{document}
+
+% ==============================================================================
+% TITLE SLIDE
+% ==============================================================================
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% ==============================================================================
+% OUTLINE
+% ==============================================================================
+\begin{frame}{Nội dung trình bày}
+    \tableofcontents
+\end{frame}
+
+% ==============================================================================
+% SECTION 1: GIỚI THIỆU
+% ==============================================================================
+\section{Giới thiệu}
+
+\begin{frame}{Đặt vấn đề}
+    \begin{columns}
+        \column{0.55\textwidth}
+        \textbf{Thách thức trong ngành chuối:}
+        \begin{itemize}
+            \item Phân loại thủ công tốn nhân lực
+            \item Thiếu tính nhất quán trong đánh giá
+            \item Khó kiểm soát chất lượng quy mô lớn
+            \item Chuối là trái cây xuất khẩu quan trọng của Việt Nam
+        \end{itemize}
+        
+        \vspace{0.5cm}
+        \textbf{Giải pháp đề xuất:}
+        \begin{itemize}
+            \item Ứng dụng AI \& Computer Vision
+            \item Phân loại tự động, real-time
+            \item Hỗ trợ quyết định cho người dùng
+        \end{itemize}
+        
+        \column{0.4\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/train_batch0.jpg}
+        {\small\textit{Các loại chuối với độ chín khác nhau}}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Mục tiêu nghiên cứu}
+    \begin{block}{Mục tiêu chính}
+        Xây dựng hệ thống phân loại chất lượng chuối \textbf{real-time} sử dụng YOLOv8
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{columns}
+        \column{0.25\textwidth}
+        \centering
+        \textcolor{bananaGreen}{\faLeaf}\\[0.2cm]
+        \textbf{Unripe}\\
+        Chuối xanh\\
+        {\small Chưa thu hoạch}
+        
+        \column{0.25\textwidth}
+        \centering
+        \textcolor{bananaYellow}{\faStar}\\[0.2cm]
+        \textbf{Export}\\
+        Chín vừa\\
+        {\small Xuất khẩu}
+        
+        \column{0.25\textwidth}
+        \centering
+        \textcolor{bananaBrown}{\faExclamationTriangle}\\[0.2cm]
+        \textbf{Overripe}\\
+        Quá chín\\
+        {\small Bán gấp}
+        
+        \column{0.25\textwidth}
+        \centering
+        \textcolor{red}{\faTimesCircle}\\[0.2cm]
+        \textbf{Defective}\\
+        Hỏng/Thối\\
+        {\small Loại bỏ}
+    \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SECTION 2: PHƯƠNG PHÁP
+% ==============================================================================
+\section{Phương pháp}
+
+\begin{frame}{Kiến trúc hệ thống 2-Stage Pipeline}
+    \centering
+    \begin{tikzpicture}[scale=0.85, transform shape,
+        block/.style={rectangle, draw, fill=blue!20, text width=2.2cm, text centered, rounded corners, minimum height=1cm},
+        arrow/.style={->, thick}
+    ]
+        % Input
+        \node[block, fill=green!30] (input) at (0,0) {Video Frame\\(Webcam)};
+        
+        % Detector
+        \node[block] (detector) at (3,0) {YOLO\\Detector\\(COCO)};
+        
+        % Classifier
+        \node[block] (classifier) at (6,0) {YOLO\\Classifier\\(Fine-tuned)};
+        
+        % Analyzer
+        \node[block, fill=orange!30] (analyzer) at (9,0) {Banana\\Analyzer\\(HSV/LAB)};
+        
+        % Output
+        \node[block, fill=red!30] (output) at (12,0) {Kết quả\\Phân loại};
+        
+        % Arrows
+        \draw[arrow] (input) -- (detector);
+        \draw[arrow] (detector) -- node[above] {\small crop} (classifier);
+        \draw[arrow] (classifier) -- (analyzer);
+        \draw[arrow] (analyzer) -- (output);
+    \end{tikzpicture}
+    
+    \vspace{0.5cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Stage 1: Detection}
+        \begin{itemize}
+            \item COCO pretrained YOLOv8n
+            \item Localization chuối trong frame
+            \item Không cần annotation bbox
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Stage 2: Classification}
+        \begin{itemize}
+            \item YOLOv8n-cls fine-tuned
+            \item Phân loại 4 class độ chín
+            \item + BananaAnalyzer refinement
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Tại sao chọn 2-Stage Pipeline?}
+    \begin{alertblock}{Constraint → Opportunity}
+        Dataset Kaggle chỉ có \textbf{classification labels}, không có bounding box!
+    \end{alertblock}
+    
+    \vspace{0.3cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Giải pháp thông minh:}
+        \begin{enumerate}
+            \item Dùng COCO detector có sẵn (class ``banana'')
+            \item Fine-tune classifier riêng trên Kaggle data
+            \item Kết hợp với BananaAnalyzer cho edge cases
+        \end{enumerate}
+        
+        \column{0.5\textwidth}
+        \textbf{Lợi ích:}
+        \begin{itemize}
+            \item[\faCheck] Không cần label bbox thủ công
+            \item[\faCheck] Tận dụng pretrained knowledge
+            \item[\faCheck] Có thể cải tiến từng component độc lập
+            \item[\faCheck] Flexibility cao
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Module BananaAnalyzer}
+    \begin{columns}
+        \column{0.45\textwidth}
+        \textbf{Đặc trưng trích xuất:}
+        \begin{table}[h]
+            \small
+            \begin{tabular}{ll}
+                \toprule
+                \textbf{Feature} & \textbf{Ý nghĩa} \\
+                \midrule
+                yellow\_ratio & Độ chín \\
+                green\_ratio & Chưa chín \\
+                brown\_ratio & Quá chín \\
+                black\_ratio & Hỏng/thối \\
+                spot\_count & Số đốm \\
+                quality\_score & Điểm tổng hợp \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        
+        \column{0.5\textwidth}
+        \textbf{Feature Refinement:}
+        \begin{itemize}
+            \item Khi classifier không chắc chắn (confidence < 50\%)
+            \item Khi phát hiện dấu hiệu defective:
+            \begin{itemize}
+                \item black\_ratio > 0.15
+                \item brown\_ratio > 0.3 + spot\_count > 10
+            \end{itemize}
+            \item Sửa $\sim$10-15\% edge cases
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SECTION 3: DỮ LIỆU VÀ HUẤN LUYỆN
+% ==============================================================================
+\section{Dữ liệu \& Huấn luyện}
+
+\begin{frame}{Dataset: Kaggle Banana Classification}
+    \begin{columns}
+        \column{0.45\textwidth}
+        \begin{table}[h]
+            \small
+            \begin{tabular}{lr}
+                \toprule
+                \textbf{Thuộc tính} & \textbf{Giá trị} \\
+                \midrule
+                Tổng số ảnh & $\sim$13,500 \\
+                Số class & 4 \\
+                Dung lượng & 227 MB \\
+                License & MIT \\
+                \midrule
+                Training & 80\% \\
+                Validation & 10\% \\
+                Test & 10\% \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        
+        \textbf{4 Classes:}
+        \begin{enumerate}
+            \item Unripe (Xanh)
+            \item Ripe (Chín)
+            \item Overripe (Quá chín)
+            \item Rotten (Thối)
+        \end{enumerate}
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{images/train_batch1.jpg}
+        {\small\textit{Ví dụ ảnh từ training set}}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Quá trình huấn luyện}
+    \begin{columns}
+        \column{0.45\textwidth}
+        \textbf{Cấu hình:}
+        \begin{table}[h]
+            \small
+            \begin{tabular}{ll}
+                \toprule
+                Base model & yolov8n-cls.pt \\
+                Image size & 416×416 \\
+                Epochs & 50 \\
+                Batch size & Auto \\
+                Optimizer & AdamW \\
+                Device & GPU (CUDA) \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        
+        \textbf{Thời gian:} $\sim$71 phút
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/results.png}
+        {\small\textit{Training metrics qua 50 epochs}}
+    \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SECTION 4: KẾT QUẢ
+% ==============================================================================
+\section{Kết quả}
+
+\begin{frame}{Giai đoạn 1: Kết quả Classifier ``Thô''}
+    \begin{columns}
+        \column{0.4\textwidth}
+        \begin{block}{Metrics trên Validation Set}
+            \begin{itemize}
+                \item \textbf{Top-1 Accuracy: 98.75\%}
+                \item Top-5 Accuracy: 100\%
+                \item Training Loss: 0.0096
+                \item Val Loss: 0.0752
+            \end{itemize}
+        \end{block}
+        
+        \vspace{0.3cm}
+        \textbf{Nhận định:}
+        \begin{itemize}
+            \item Model hội tụ nhanh ($\sim$15 epochs)
+            \item Transfer learning hiệu quả
+            \item \textcolor{red}{Nhưng: chỉ trên clean data!}
+        \end{itemize}
+        
+        \column{0.55\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/confusion_matrix_normalized.png}
+        {\small\textit{Confusion Matrix (normalized)}}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Phân tích Confusion Matrix}
+    \begin{columns}
+        \column{0.55\textwidth}
+        \includegraphics[width=\textwidth]{images/confusion_matrix.png}
+        
+        \column{0.4\textwidth}
+        \textbf{Nhận định quan trọng:}
+        \begin{itemize}
+            \item Model học được \textbf{thứ tự chín}
+            \item Lỗi chỉ xảy ra giữa class liền kề:
+            \begin{itemize}
+                \item ripe $\leftrightarrow$ overripe
+                \item overripe $\leftrightarrow$ rotten
+            \end{itemize}
+            \item \textbf{Không có} nhầm lẫn cực đoan (unripe $\leftrightarrow$ rotten)
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        $\Rightarrow$ Feature space phù hợp với bản chất tự nhiên của quá trình chín!
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Giai đoạn 2: Pipeline Hoàn chỉnh}
+    \begin{columns}
+        \column{0.45\textwidth}
+        \textbf{Test trên 15 ảnh thực tế:}
+        \begin{table}[h]
+            \small
+            \begin{tabular}{lcc}
+                \toprule
+                \textbf{Category} & \textbf{Frame} & \textbf{Instance} \\
+                \midrule
+                Export & 4 & 7 \\
+                Unripe & --- & 9 \\
+                Overripe & 3 & 3 \\
+                Defective & 4 & 4 \\
+                None & 4 & --- \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        
+        \textbf{Kết quả:}
+        \begin{itemize}
+            \item[\faCheck] Negative samples xử lý đúng
+            \item[\faCheck] Multi-object detection OK
+            \item[\faCheck] Feature refinement hoạt động
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{images/real_e2e.jpg}
+        {\small\textit{Kết quả test end-to-end}}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Ví dụ kết quả Pipeline}
+    \begin{columns}
+        \column{0.33\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/pipeline_results/3.jpg}
+        {\small Overripe (100\%)}
+        
+        \column{0.33\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/pipeline_results/5.jpg}
+        {\small Export (100\%)}
+        
+        \column{0.33\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{images/pipeline_results/7.jpg}
+        {\small Defective (99.96\%)}
+    \end{columns}
+    
+    \vspace{0.5cm}
+    
+    \begin{columns}
+        \column{0.48\textwidth}
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/pipeline_results/14.jpg}
+        {\small Nải 6 quả: 4 Unripe + 2 Export}
+        
+        \column{0.48\textwidth}
+        \centering
+        \includegraphics[width=0.85\textwidth]{images/pipeline_results/15.jpg}
+        {\small Nải 6 quả: Overall = Defective}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Hiệu năng Real-time}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{table}[h]
+            \small
+            \begin{tabular}{lcc}
+                \toprule
+                \textbf{Hardware} & \textbf{Total} & \textbf{FPS} \\
+                \midrule
+                RTX 3060 & $\sim$13 ms & 40-75 \\
+                GTX 1650 & $\sim$23 ms & 30-40 \\
+                Intel i7 (CPU) & $\sim$70 ms & 12-15 \\
+                Intel i5 (CPU) & $\sim$120 ms & 8-10 \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        
+        \textbf{Kết luận:}
+        \begin{itemize}
+            \item GPU mid-range: \textbf{Real-time mượt mà}
+            \item CPU: Chấp nhận được cho demo
+        \end{itemize}
+        
+        \column{0.45\textwidth}
+        \begin{block}{Công thức Latency}
+            \small
+            $\text{Latency} = T_{\text{capture}} + T_{\text{det}} + T_{\text{cls}} + T_{\text{analyzer}} + T_{\text{render}}$
+        \end{block}
+        
+        \vspace{0.3cm}
+        Trên GPU mid-range:\\
+        $\text{Latency}_{\text{total}} \approx 50-80$ ms
+    \end{columns}
+\end{frame}
+
+\begin{frame}{So sánh: Model ``Thô'' vs Pipeline Hoàn chỉnh}
+    \begin{table}[h]
+        \begin{tabular}{lcc}
+            \toprule
+            \textbf{Tiêu chí} & \textbf{Giai đoạn 1} & \textbf{Giai đoạn 2} \\
+            \midrule
+            Dữ liệu đánh giá & Kaggle val set & Ảnh thực tế \\
+            Có localization & \textcolor{red}{\faTimes} & \textcolor{green}{\faCheck} \\
+            Xử lý nhiều quả & \textcolor{red}{\faTimes} & \textcolor{green}{\faCheck} \\
+            Feature refinement & \textcolor{red}{\faTimes} & \textcolor{green}{\faCheck} \\
+            Edge case handling & \textcolor{red}{\faTimes} & \textcolor{green}{\faCheck} \\
+            Accuracy báo cáo & 98.75\% (clean) & Phụ thuộc \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    
+    \begin{alertblock}{Bài học quan trọng}
+        \centering
+        \textbf{Accuracy trên validation set $\neq$ Hiệu năng thực tế!}
+    \end{alertblock}
+\end{frame}
+
+% ==============================================================================
+% SECTION 5: DEMO & KẾT LUẬN
+% ==============================================================================
+\section{Demo \& Kết luận}
+
+\begin{frame}{Demo hệ thống}
+    \centering
+    \begin{tikzpicture}
+        \node[draw, rounded corners, fill=blue!10, minimum width=10cm, minimum height=5cm] (demo) {};
+        \node at (demo.center) {\Large\textbf{DEMO VIDEO / LIVE DEMO}};
+        \node[below] at (demo.south) {\small Chạy \texttt{python main.py} để khởi động ứng dụng};
+    \end{tikzpicture}
+    
+    \vspace{0.5cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Tính năng chính:}
+        \begin{itemize}
+            \item Real-time webcam processing
+            \item Bounding box + label tiếng Việt
+            \item Hiển thị confidence + quality score
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Yêu cầu:}
+        \begin{itemize}
+            \item Python 3.9+
+            \item Webcam
+            \item GPU (khuyến nghị)
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Đóng góp chính}
+    \begin{enumerate}
+        \item \textbf{Kiến trúc 2-stage hiệu quả:}
+        \begin{itemize}
+            \item Giải quyết thiếu bbox annotation
+            \item Tận dụng COCO pretrained + Kaggle classification data
+        \end{itemize}
+        
+        \item \textbf{Module BananaAnalyzer:}
+        \begin{itemize}
+            \item Kết hợp deep learning + domain knowledge (HSV/LAB)
+            \item Feature refinement cho edge cases
+        \end{itemize}
+        
+        \item \textbf{Hệ thống real-time hoàn chỉnh:}
+        \begin{itemize}
+            \item 98.75\% accuracy trên validation
+            \item 40-75 FPS trên GPU mid-range
+            \item Giao diện tiếng Việt thân thiện
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{Hạn chế \& Hướng phát triển}
+    \begin{columns}
+        \column{0.45\textwidth}
+        \textbf{Hạn chế:}
+        \begin{itemize}
+            \item Phụ thuộc COCO detector
+            \item Dataset nền đơn giản
+            \item Ranh giới mờ overripe/rotten
+            \item Chưa test nhiều giống chuối
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Hướng phát triển:}
+        \begin{itemize}
+            \item Train detector riêng
+            \item Export TFLite cho Android
+            \item Mở rộng sang trái cây khác
+            \item Dự đoán shelf-life
+            \item Explainable AI (Grad-CAM)
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Kết luận}
+    \begin{block}{Tổng kết}
+        Đề tài đã xây dựng thành công hệ thống phân loại chất lượng chuối real-time với:
+        \begin{itemize}
+            \item \textbf{98.75\% Top-1 Accuracy} trên validation set
+            \item \textbf{40-75 FPS} trên GPU mid-range
+            \item Pipeline 2-stage linh hoạt, dễ mở rộng
+        \end{itemize}
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{center}
+        \Large\textbf{Cảm ơn thầy/cô và các bạn đã lắng nghe!}
+        
+        \vspace{0.5cm}
+        
+        \faGithub\ \texttt{github.com/[username]/banana-quality-grading}
+    \end{center}
+\end{frame}
+
+% ==============================================================================
+% Q&A
+% ==============================================================================
+\begin{frame}{}
+    \centering
+    \Huge\textbf{Q \& A}
+    
+    \vspace{1cm}
+    
+    \Large Câu hỏi \& Thảo luận
+\end{frame}
+
+% ==============================================================================
+% BACKUP SLIDES
+% ==============================================================================
+\appendix
+
+\begin{frame}{Backup: Chi tiết BananaAnalyzer}
+    \begin{table}[h]
+        \small
+        \begin{tabular}{lcccc}
+            \toprule
+            \textbf{Feature} & \textbf{Unripe} & \textbf{Export} & \textbf{Overripe} & \textbf{Defective} \\
+            \midrule
+            yellow\_ratio & 0.1-0.3 & 0.6-0.8 & 0.4-0.6 & 0.2-0.4 \\
+            green\_ratio & 0.5-0.7 & 0.05-0.15 & 0.05-0.1 & 0.0-0.1 \\
+            brown\_ratio & 0.0-0.05 & 0.05-0.1 & 0.2-0.4 & 0.3-0.5 \\
+            black\_ratio & 0.0 & 0.0-0.02 & 0.02-0.1 & 0.1-0.3 \\
+            spot\_count & 0-2 & 2-5 & 10-30 & 30-100+ \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+\begin{frame}{Backup: So sánh với nghiên cứu khác}
+    \begin{table}[h]
+        \begin{tabular}{lccp{4cm}}
+            \toprule
+            \textbf{Nghiên cứu} & \textbf{Accuracy} & \textbf{Classes} & \textbf{Ghi chú} \\
+            \midrule
+            \textbf{Ours} & \textbf{98.75\%} & 4 & Real-time, 2-stage \\
+            Mendoza (2004) & 93\% & 7 & Thống kê màu \\
+            Mazen (2019) & 96.7\% & 3 & ANN, offline \\
+            Kaggle baseline & $\sim$95\% & 4 & MobileNetV2 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+\end{document}

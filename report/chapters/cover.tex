@@ -1,0 +1,64 @@
+
+\begin{titlepage}
+    % --- VẼ KHUNG VIỀN ---
+    \begin{tikzpicture}[remember picture, overlay]
+        \draw [line width=3pt]
+            ($ (current page.north west) + (2.0cm,-2.0cm) $)
+            rectangle
+            ($ (current page.south east) + (-1.5cm,2.0cm) $);
+        \draw [line width=1pt]
+            ($ (current page.north west) + (2.15cm,-2.15cm) $)
+            rectangle
+            ($ (current page.south east) + (-1.65cm,2.15cm) $);
+    \end{tikzpicture}
+
+    \begin{center}
+        % --- PHẦN HEADER ---
+        \vspace{-0.5cm}
+        \textbf{\large ĐẠI HỌC QUỐC GIA HÀ NỘI}\\
+        \textbf{\large TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}\\
+        \textbf{\large KHOA VẬT LÝ}\\
+        \vspace{0.3cm}
+        \rule{6cm}{1pt} % Dòng kẻ ngắn dưới tên khoa
+        
+        \vspace{1.5cm}
+        
+        % --- LOGO ---
+        % Chú ý: Đảm bảo bạn có file logo đúng đường dẫn
+        \includegraphics[width=4cm]{images/hus_logo.png} 
+        
+        \vspace{1.5cm}
+        
+        % --- TÊN BÁO CÁO ---
+        \textbf{\LARGE BÁO CÁO CUỐI KỲ}\\
+        \vspace{0.3cm}
+        \textbf{\Large Môn học: Thị giác máy tính}\\
+        \vspace{1.5cm}
+        
+        % --- TÊN ĐỀ TÀI (Nổi bật nhất) ---
+        \textbf{\Huge ỨNG DỤNG THỊ GIÁC MÁY TÍNH}\\
+        \vspace{0.3cm}
+        \textbf{\Huge TRONG PHÂN LOẠI CHẤT LƯỢNG CHUỐI}
+        
+        \vspace{2.5cm}
+        
+        % --- THÔNG TIN SINH VIÊN/GV (Căn chỉnh lại cho gọn) ---
+        \begin{table}[h]
+            \centering
+            \begin{tabular}{r l}
+                \textbf{Giảng viên hướng dẫn:} & TS. Phạm Tiến Lâm \\
+                                               & Vi Anh Quân \\[0.5cm]
+                \textbf{Sinh viên thực hiện:}  & 1. Lường Văn Tâm (22001349) \\
+                                               & 2. Khương Thanh Tín (22001358) \\[0.5cm]
+                \textbf{Lớp:}                  & K67 Kỹ thuật điện tử và Tin học
+            \end{tabular}
+        \end{table}
+        
+        \vfill % Tự động đẩy phần dưới cùng xuống đáy
+        
+        % --- FOOTER ---
+        \textbf{Hà Nội -- 2026}
+    \end{center}
+\end{titlepage}
+
+\clearpage

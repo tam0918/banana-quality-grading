@@ -1,0 +1,179 @@
+%!TEX encoding = UTF-8 Unicode
+%!TEX program = xelatex
+% ==============================================================================
+% BÁO CÁO MÔN HỌC: THỊ GIÁC MÁY TÍNH
+% Đề tài: Ứng dụng thị giác máy tính trong phân loại chất lượng Chuối
+% Trường Đại học Khoa học Tự nhiên - ĐHQGHN
+% ==============================================================================
+
+\documentclass[12pt,a4paper]{report}
+
+% ========================= PACKAGES =========================
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{fontspec}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{glossaries}
+\usepackage{appendix}
+\usepackage{pdfpages}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{mathptmx} % Font giống Times New Roman
+\usepackage{tikz} % Để vẽ khung viền
+\usetikzlibrary{calc}
+
+% ========================= CẤU HÌNH TRANG =========================
+\geometry{
+    left=3cm,
+    right=2cm,
+    top=2.5cm,
+    bottom=2.5cm
+}
+
+% Font configuration
+\setmainfont{Times New Roman}
+
+% Spacing
+\onehalfspacing
+
+% ========================= HYPERREF =========================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=green!50!black,
+    urlcolor=blue!80!black,
+    pdftitle={Ứng dụng thị giác máy tính trong phân loại chất lượng Chuối},
+    pdfauthor={Lường Văn Tâm, Khương Thanh Tín}
+}
+
+% ========================= LISTINGS CONFIG =========================
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{pythonstyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    language=Python
+}
+
+\lstset{style=pythonstyle}
+
+% ========================= HEADERS & FOOTERS =========================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+
+% ========================= CHAPTER/SECTION FORMATTING =========================
+\titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{-20pt}{40pt}
+
+% ========================= TABLE OF CONTENTS =========================
+\renewcommand{\contentsname}{MỤC LỤC}
+\renewcommand{\listfigurename}{DANH MỤC HÌNH ẢNH}
+\renewcommand{\listtablename}{DANH MỤC BẢNG BIỂU}
+
+% ========================= CAPTION =========================
+\captionsetup{font=small, labelfont=bf}
+
+% ========================= GLOSSARY =========================
+\makeglossaries
+
+% Định nghĩa các từ viết tắt
+\newacronym{cnn}{CNN}{Convolutional Neural Network - Mạng nơ-ron tích chập}
+\newacronym{yolo}{YOLO}{You Only Look Once - Thuật toán nhận diện đối tượng thời gian thực}
+\newacronym{hsv}{HSV}{Hue-Saturation-Value - Không gian màu}
+\newacronym{lab}{LAB}{Lightness-A-B Color Space - Không gian màu CIE L*a*b*}
+\newacronym{roi}{ROI}{Region of Interest - Vùng quan tâm}
+\newacronym{bbox}{BBox}{Bounding Box - Hộp giới hạn}
+\newacronym{fps}{FPS}{Frames Per Second - Số khung hình mỗi giây}
+\newacronym{gpu}{GPU}{Graphics Processing Unit - Bộ xử lý đồ họa}
+\newacronym{cpu}{CPU}{Central Processing Unit - Bộ xử lý trung tâm}
+\newacronym{api}{API}{Application Programming Interface - Giao diện lập trình ứng dụng}
+\newacronym{clahe}{CLAHE}{Contrast Limited Adaptive Histogram Equalization}
+\newacronym{nms}{NMS}{Non-Maximum Suppression - Triệt tiêu phi cực đại}
+\newacronym{map}{mAP}{mean Average Precision - Độ chính xác trung bình}
+\newacronym{iou}{IoU}{Intersection over Union - Tỉ lệ giao trên hợp}
+\newacronym{ui}{UI}{User Interface - Giao diện người dùng}
+
+% ========================= DOCUMENT =========================
+\begin{document}
+
+% ========================= TRANG BÌA =========================
+\input{chapters/cover}
+
+% ========================= LỜI CẢM ƠN =========================
+\input{chapters/acknowledgement}
+
+% ========================= MỤC LỤC =========================
+\tableofcontents
+\clearpage
+
+% ========================= DANH MỤC HÌNH ẢNH =========================
+\listoffigures
+\addcontentsline{toc}{chapter}{DANH MỤC HÌNH ẢNH}
+\clearpage
+
+% ========================= DANH MỤC BẢNG BIỂU =========================
+\listoftables
+\addcontentsline{toc}{chapter}{DANH MỤC BẢNG BIỂU}
+\clearpage
+
+% ========================= DANH MỤC TỪ VIẾT TẮT =========================
+\printglossary[type=\acronymtype, title=DANH MỤC TỪ VIẾT TẮT]
+\addcontentsline{toc}{chapter}{DANH MỤC TỪ VIẾT TẮT}
+\clearpage
+
+% ========================= NỘI DUNG CHÍNH =========================
+\input{chapters/chapter1_introduction}
+\input{chapters/chapter2_theory}
+\input{chapters/chapter3_methodology}
+\input{chapters/chapter4_implementation}
+\input{chapters/chapter5_results}
+\input{chapters/chapter6_conclusion}
+
+% ========================= TÀI LIỆU THAM KHẢO =========================
+\input{chapters/references}
+
+% ========================= PHỤ LỤC =========================
+\input{chapters/appendix}
+
+\end{document}
