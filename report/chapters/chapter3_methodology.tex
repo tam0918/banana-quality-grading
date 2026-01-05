@@ -125,7 +125,7 @@ Một vấn đề thực tế khi sử dụng COCO detector là sự \textbf{nh�
 
 \section{Module BananaAnalyzer}
 
-Đây là module phân tích hình ảnh nâng cao, được phát triển dựa trên các nghiên cứu khoa học về nhận diện chuối \cite{banana_detection_paper}. Module này hoạt động như một ``lớp refinement'' cho kết quả của classifier.
+Đây là module phân tích hình ảnh nâng cao, được phát triển dựa trên các nghiên cứu khoa học về nhận diện chuối \ref{ref:banana_detection_paper}. Module này hoạt động như một ``lớp refinement'' cho kết quả của classifier.
 
 \subsection{Tiền xử lý ảnh}
 
@@ -133,7 +133,7 @@ Một vấn đề thực tế khi sử dụng COCO detector là sự \textbf{nh�
 def preprocess_frame(self, frame_bgr, enhance_contrast=True, denoise=True):
     result = frame_bgr.copy()
     
-    # Bilateral filter: loại noise mà giữ cạnh
+    # Bilateral filter: loai noise ma giu canh
     if denoise:
         result = cv2.bilateralFilter(result, d=5, sigmaColor=50, sigmaSpace=50)
     

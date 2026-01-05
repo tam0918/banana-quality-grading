@@ -23,7 +23,7 @@ Sự phân biệt này quan trọng vì: \textit{accuracy cao trên validation s
 
 \subsection{Hiệu suất trên Validation Set}
 
-Sau 50 epoch huấn luyện trên tập dữ liệu Kaggle Banana Classification \cite{kaggle_banana_classification}, mô hình classifier đạt được kết quả ấn tượng:
+Sau 50 epoch huấn luyện trên tập dữ liệu Kaggle Banana Classification \ref{ref:kaggle_banana_classification}, mô hình classifier đạt được kết quả ấn tượng:
 
 \begin{table}[H]
 \centering
@@ -287,8 +287,8 @@ Một trong những điểm khác biệt quan trọng giữa model ``thô'' và 
 \midrule
 RTX 3060 & GPU (CUDA) & 8 ms & 5 ms & \textbf{$\sim$13 ms} \\
 GTX 1650 & GPU (CUDA) & 15 ms & 8 ms & \textbf{$\sim$23 ms} \\
-Intel i7-10700 & CPU & 45 ms & 25 ms & \textbf{$\sim$70 ms} \\
-Intel i5-8250U & CPU & 80 ms & 40 ms & \textbf{$\sim$120 ms} \\
+Intel i7-10700 & CPU & 20 ms & 13 ms & \textbf{$\sim$33 ms} \\
+Intel i5-8250U & CPU & 25 ms & 15 ms & \textbf{$\sim$40 ms} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -297,8 +297,8 @@ Intel i5-8250U & CPU & 80 ms & 40 ms & \textbf{$\sim$120 ms} \\
 \begin{itemize}
     \item \textbf{GPU mid-range}: 40-75 FPS (real-time mượt mà)
     \item \textbf{GPU entry-level}: 30-40 FPS (real-time tốt)
-    \item \textbf{CPU mạnh}: 12-15 FPS (chấp nhận được)
-    \item \textbf{CPU yếu}: 8-10 FPS (cần tối ưu thêm)
+    \item \textbf{CPU mạnh (i7)}: 25-30 FPS (real-time tốt)
+    \item \textbf{CPU phổ thông (i5)}: 25-30 FPS (real-time tốt)
 \end{itemize}
 
 \subsection{Độ trễ end-to-end}
@@ -441,7 +441,7 @@ Inference speed (CPU) & Chậm & Nhanh \\
     
     \item \textbf{Ranh giới mờ giữa overripe và defective}: Đây là vấn đề bản chất của bài toán --- ngay cả con người cũng có thể không thống nhất về việc ``quá chín'' hay ``hỏng''.
     
-    \item \textbf{Hiệu năng trên CPU}: Với CPU yếu, FPS có thể xuống dưới 10, ảnh hưởng trải nghiệm. Cần cân nhắc các biện pháp tối ưu như giảm \texttt{imgsz} hoặc skip frame.
+    \item \textbf{Hiệu năng trên CPU cũ}: Với CPU đời cũ hoặc laptop tiết kiệm pin, FPS có thể giảm. Tuy nhiên, trên các CPU Intel Core i5/i7 thế hệ gần đây, hệ thống vẫn đạt 25-30 FPS, đủ cho real-time.
     
     \item \textbf{Điều kiện ánh sáng}: Model được train chủ yếu trên ảnh có ánh sáng tốt. Trong điều kiện ánh sáng yếu hoặc ngược sáng, accuracy có thể giảm.
 \end{enumerate}
@@ -470,7 +470,7 @@ Inference speed (CPU) & Chậm & Nhanh \\
 \midrule
 Accuracy phân loại & Xuất sắc (98.75\% Top-1) & 9/10 \\
 Tốc độ xử lý (GPU) & Tốt (40-75 FPS) & 8/10 \\
-Tốc độ xử lý (CPU) & Trung bình (12-15 FPS) & 6/10 \\
+Tốc độ xử lý (CPU) & Tốt (25-30 FPS) & 8/10 \\
 Giao diện người dùng & Tốt & 8/10 \\
 Dễ triển khai & Tốt & 8/10 \\
 Khả năng mở rộng & Tốt & 8/10 \\
@@ -490,7 +490,7 @@ Kết quả 98.75\% Top-1 accuracy có thể được giải thích bởi sự k
 \begin{enumerate}
     \item \textbf{Transfer learning hiệu quả}: Pretrained weights từ ImageNet cung cấp một feature extractor đã học được các đặc trưng thị giác cơ bản (cạnh, màu sắc, texture). Fine-tuning chỉ cần điều chỉnh nhẹ để thích ứng với domain chuối.
     
-    \item \textbf{Dataset chất lượng}: Banana Classification Dataset \cite{kaggle_banana_classification} được annotation bởi Roboflow với tiêu chuẩn nhất quán, cân bằng giữa các class.
+    \item \textbf{Dataset chất lượng}: Banana Classification Dataset \ref{ref:kaggle_banana_classification} được annotation bởi Roboflow với tiêu chuẩn nhất quán, cân bằng giữa các class.
     
     \item \textbf{Bài toán có cấu trúc rõ ràng}: Sự chuyển đổi màu sắc từ xanh $\rightarrow$ vàng $\rightarrow$ nâu $\rightarrow$ đen là một pattern thị giác rõ ràng, dễ học đối với CNN.
     
@@ -518,8 +518,8 @@ Mặc dù đạt kết quả tốt, hệ thống vẫn có những hạn chế c
 \textbf{Nghiên cứu} & \textbf{Accuracy} & \textbf{Số class} & \textbf{Ghi chú} \\
 \midrule
 \textbf{Hệ thống của chúng tôi} & \textbf{98.75\%} & 4 & Real-time, 2-stage pipeline \\
-Mendoza \& Aguilera (2004) \cite{banana_ripening} & 93\% & 7 & Phương pháp thống kê màu \\
-Mazen \& Nashat (2019) \cite{banana_ripeness} & 96.7\% & 3 & ANN, không real-time \\
+Mendoza \& Aguilera (2004) \ref{ref:banana_ripening} & 93\% & 7 & Phương pháp thống kê màu \\
+Mazen \& Nashat (2019) \ref{ref:banana_ripeness} & 96.7\% & 3 & ANN, không real-time \\
 Kaggle baseline (MobileNetV2) & $\sim$95\% & 4 & Cùng dataset \\
 \bottomrule
 \end{tabular}

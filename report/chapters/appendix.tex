@@ -19,11 +19,11 @@
 \midrule
 \multicolumn{4}{@{}l}{\textbf{Nghiên cứu \& Thiết kế}} \\
 \midrule
-1 & Nghiên cứu lý thuyết YOLO & Lường Văn Tâm & 50\% \\
-  &                          & Khương Thanh Tín & 50\% \\
+1 & Nghiên cứu lý thuyết YOLO & Lường Văn Tâm & 60\% \\
+  &                          & Khương Thanh Tín & 40\% \\
 \midrule
-2 & Khảo sát dataset & Khương Thanh Tín & 60\% \\
-  &                  & Lường Văn Tâm & 40\% \\
+2 & Khảo sát dataset & Lường Văn Tâm & 50\% \\
+  &                  & Khương Thanh Tín & 50\% \\
 \midrule
 3 & Thiết kế kiến trúc hệ thống & Lường Văn Tâm & 70\% \\
   &                              & Khương Thanh Tín & 30\% \\
@@ -36,8 +36,8 @@
 5 & Phát triển module Grader & Lường Văn Tâm & 70\% \\
   &                          & Khương Thanh Tín & 30\% \\
 \midrule
-6 & Phát triển giao diện UI & Khương Thanh Tín & 60\% \\
-  &                          & Lường Văn Tâm & 40\% \\
+6 & Phát triển giao diện UI & Lường Văn Tâm & 50\% \\
+  &                          & Khương Thanh Tín & 50\% \\
 \midrule
 7 & Viết script huấn luyện & Lường Văn Tâm & 60\% \\
   &                        & Khương Thanh Tín & 40\% \\
@@ -47,25 +47,25 @@
 \midrule
 \multicolumn{4}{@{}l}{\textbf{Thử nghiệm \& Đánh giá}} \\
 \midrule
-9 & Huấn luyện \& fine-tune model & Khương Thanh Tín & 50\% \\
-  &                                & Lường Văn Tâm & 50\% \\
+9 & Huấn luyện \& fine-tune model & Lường Văn Tâm & 50\% \\
+  &                                & Khương Thanh Tín & 50\% \\
 \midrule
-10 & Viết test cases & Khương Thanh Tín & 60\% \\
-   &                 & Lường Văn Tâm & 40\% \\
+10 & Viết test cases & Lường Văn Tâm & 40\% \\
+   &                 & Khương Thanh Tín & 60\% \\
 \midrule
-11 & Đánh giá \& phân tích kết quả & Lường Văn Tâm & 50\% \\
-   &                                & Khương Thanh Tín & 50\% \\
+11 & Đánh giá \& phân tích kết quả & Lường Văn Tâm & 60\% \\
+   &                                & Khương Thanh Tín & 40\% \\
 \midrule
 \multicolumn{4}{@{}l}{\textbf{Tài liệu \& Báo cáo}} \\
 \midrule
 12 & Viết báo cáo LaTeX & Lường Văn Tâm & 60\% \\
    &                    & Khương Thanh Tín & 40\% \\
 \midrule
-13 & Viết README \& documentation & Khương Thanh Tín & 50\% \\
-   &                               & Lường Văn Tâm & 50\% \\
+13 & Viết README \& documentation & Lường Văn Tâm & 50\% \\
+   &                               & Khương Thanh Tín & 50\% \\
 \midrule
-14 & Chuẩn bị slide thuyết trình & Khương Thanh Tín & 50\% \\
-   &                              & Lường Văn Tâm & 50\% \\
+14 & Chuẩn bị slide thuyết trình & Lường Văn Tâm & 50\% \\
+   &                              & Khương Thanh Tín & 50\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -80,8 +80,8 @@
 \toprule
 \textbf{Thành viên} & \textbf{MSV} & \textbf{Tỉ lệ đóng góp} \\
 \midrule
-Lường Văn Tâm & 22001349 & 55\% \\
-Khương Thanh Tín & 22001349 & 45\% \\
+Lường Văn Tâm & 22001349 & 60\% \\
+Khương Thanh Tín & 22001349 & 40\% \\
 \midrule
 \textbf{Tổng} & & \textbf{100\%} \\
 \bottomrule
@@ -170,100 +170,40 @@ copy runs_banana\yolov8n_banana_cls\weights\best.pt weights\best.pt
 cp runs_banana/yolov8n_banana_cls/weights/best.pt weights/best.pt
 \end{lstlisting}
 
-\chapter{MÃ NGUỒN CHÍNH}
+\chapter{MÃ NGUỒN}
 \label{app:source_code}
 
-\section{File main.py}
+Toàn bộ mã nguồn của dự án được công khai trên GitHub:
 
-\begin{lstlisting}[caption={Nội dung file main.py (rút gọn)},label={lst:main_py}]
-from __future__ import annotations
-import os
-from app.ui_manager import UIConfig, UI_Manager
-from utils.resource_manager import ResourceManager
+\begin{center}
+\large
+\textbf{\url{https://github.com/tam0918/banana-quality-grading}}
+\end{center}
 
-DEFAULT_FONT_CANDIDATES = [
-    os.path.join("assets", "fonts", "Roboto-Regular.ttf"),
-    "C:/Windows/Fonts/segoeui.ttf",
-    "C:/Windows/Fonts/arial.ttf",
-]
+\vspace{0.5cm}
 
-DEFAULT_MODEL_CANDIDATES = [
-    "yolov8n_banana_cls3_best.pt",
-    os.path.join("weights", "best.pt"),
-    os.path.join("runs_banana", "yolov8n_banana", "weights", "best.pt"),
-]
+Repository bao gồm:
+\begin{itemize}
+    \item \textbf{app/}: Các module chính của ứng dụng (BananaAnalyzer, Grader, UI Manager, Video Thread)
+    \item \textbf{utils/}: Các tiện ích hỗ trợ (Resource Manager)
+    \item \textbf{weights/}: Model weights đã huấn luyện
+    \item \textbf{tests/}: Test cases và dữ liệu kiểm thử
+    \item \textbf{report/}: Báo cáo LaTeX
+    \item \textbf{slides/}: Slide thuyết trình
+    \item \textbf{main.py}: Entry point của ứng dụng
+    \item \textbf{training\_kaggle\_classification.py}: Script huấn luyện model
+    \item \textbf{requirements.txt}: Danh sách dependencies
+    \item \textbf{README.md}: Hướng dẫn sử dụng
+\end{itemize}
 
-def pick_font_path() -> str:
-    for p in DEFAULT_FONT_CANDIDATES:
-        if os.path.exists(p):
-            return p
-    return DEFAULT_FONT_CANDIDATES[0]
+\vspace{0.5cm}
 
-def pick_model_path() -> str:
-    for p in DEFAULT_MODEL_CANDIDATES:
-        if os.path.exists(p):
-            return p
-    return DEFAULT_MODEL_CANDIDATES[0]
-
-def main() -> None:
-    rm = ResourceManager()
-    # Auto-download resources if URLs provided
-    
-    ui = UI_Manager(
-        UIConfig(
-            font_path=pick_font_path(),
-            model_path=pick_model_path(),
-            detector_model_path=pick_detector_path(),
-            camera_index=0,
-        )
-    )
-    ui.run()
-
-if __name__ == "__main__":
-    main()
-\end{lstlisting}
-
-\section{Class BananaGrader (rút gọn)}
-
-\begin{lstlisting}[caption={Class BananaGrader chính},label={lst:grader_class}]
-class BananaGrader:
-    """YOLOv8-based banana grading using a 2-stage pipeline."""
-    
-    def __init__(self, model_path, detector_model_path="yolov8n.pt", ...):
-        self.model_path = model_path
-        self.detector_model_path = detector_model_path
-        
-        self.class_id_to_category_key = {
-            0: "unripe",
-            1: "export",
-            2: "overripe",
-            3: "defective",
-        }
-        
-        self._category_info = {
-            "unripe": ("Chuoi Xanh", "Unripe", "Chua thu hoach"),
-            "export": ("Chin Vua/Xuat Khau", "Just Ripe", "Bao quan & Ship"),
-            "overripe": ("Qua Chin", "Overripe", "Can ban/An ngay"),
-            "defective": ("Bi benh/Hong", "Defective", "Loai bo"),
-        }
-        
-        self._load_models()
-    
-    def grade_frame(self, frame_bgr) -> FrameGrade:
-        """Grade all bananas in a frame."""
-        # 1. Detect bananas
-        bboxes = self._detect_bananas(frame_bgr)
-        
-        # 2. Classify each bbox
-        items = []
-        for bbox in bboxes[:self.max_fruits]:
-            result = self._grade_bbox(frame_bgr, bbox)
-            items.append(result)
-        
-        # 3. Aggregate results
-        overall = self._aggregate_overall(items)
-        
-        return FrameGrade(overall=overall, items=items)
+Để clone và chạy dự án:
+\begin{lstlisting}[language=bash]
+git clone https://github.com/tam0918/banana-quality-grading.git
+cd banana-quality-grading
+pip install -r requirements.txt
+python main.py
 \end{lstlisting}
 
 \chapter{KẾT QUẢ HUẤN LUYỆN CHI TIẾT}
